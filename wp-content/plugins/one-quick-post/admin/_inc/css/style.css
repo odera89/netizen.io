@@ -1,0 +1,71 @@
+div.star-holder { position: relative; height:19px; width:100px; font-size:19px;}
+div.star {height: 100%; position:absolute; top:0px; left:0px; background-color: transparent; letter-spacing:1ex; border:none;}
+.star1 {width:20%;} .star2 {width:40%;} .star3 {width:60%;} .star4 {width:80%;} .star5 {width:100%;}
+.star.star-rating {background-color: #fc0;}
+.star img{display:block; position:absolute; right:0px; border:none; text-decoration:none;}
+div.star img {width:19px; height:19px; border-left:1px solid #fff; border-right:1px solid #fff;}
+
+.help .balloon-tip {
+	cursor: pointer;
+	cursor: hand;
+}
+
+
+.step-settings .infos{
+
+    border-left:5px solid #DDD;
+    padding:2px;
+    margin-left:-10px;
+    padding-left:5px;
+    margin-bottom:15px;
+    
+}
+
+.postbox label,.oqp-settings-tab p label{
+    font-weight: bold;
+    width:150px;
+    display:inline-block;
+}
+
+.postbox .field-settings .advanced{
+    border:1px dashed #DDD;
+    border-left:0px;
+    border-right:0px;
+}
+
+#oqp-admin-tabs #oqp-extensions .price{
+    font-weight: bold;
+    float:right;
+}
+
+#oqp-admin-tabs #oqp-extensions .disabled{
+    color:#777;
+}
+
+#oqp-admin-tabs.ui-tabs h3{
+    display:none;
+}
+#oqp-admin-tabs.ui-tabs .metabox-holder h3{
+    display:inherit;
+}
+#oqp-form-extensions .desc {
+    color: #C2C2C2;
+    
+    padding-left:10px;
+}
+#oqp-form-extensions .oqp-extension p{
+    margin-left:30px;
+}
+
+#donations{
+    background-color:#FFE991;
+    border:none;
+    padding:5px;
+    width:600px;
+    margin-bottom:20px;
+    margin-top:20px;
+}
+
+#donations.donated{
+    display:none;
+}
