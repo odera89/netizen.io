@@ -45,6 +45,12 @@ define('RPX_WPLOGIN_OPTION',               'rpx_wplogin_option');
 define('RPX_WPLOGIN_OPTION_DEFAULT',       'true');
 define('RPX_NEW_WIDGET_OPTION',            'rpx_new_widget_option');
 define('RPX_NEW_WIDGET_OPTION_DEFAULT',    'true');
+define('RPX_NEW_SHARE_OPTION',             'rpx_new_share_option');
+define('RPX_NEW_SHARE_OPTION_DEFAULT',     'true');
+define('RPX_SHARE_AUTH_OPTION',            'rpx_share_auth_option');
+define('RPX_SHARE_AUTH_OPTION_DEFAULT',    'true');
+define('RPX_SHARE_REG_OPTION',             'rpx_share_reg_option');
+define('RPX_SHARE_REG_OPTION_DEFAULT',     'true');
 define('RPX_NONCE',                        'rpx_nonce');
 define('RPX_CSRF_TOKEN',                   'rpx_csrf_token');
 define('RPX_SERVER',                       'rpxnow.com');
@@ -259,6 +265,8 @@ $rpx_advanced['RPX_SERIAL_PROFILE']     = array('default' => 'false', 'desc' => 
 $rpx_advanced['RPX_AUTH_INFO_EXTENDED'] = array('default' => 'false', 'desc' => 'PLUS/PRO/ENT Set to true to return auth_info extended this data could be used by other plugins or custom themes.');
 $rpx_advanced['RPX_SERIAL_CONTACTS']    = array('default' => 'false', 'desc' => 'PLUS/PRO/ENT Set to true to store the get_contacts in a serialized usermeta (RPX_META_CONTACTS) each time it succeeds.');
 $rpx_advanced['RPX_GET_CONTACTS']       = array('default' => 'false', 'desc' => 'PLUS/PRO/ENT (not for production use) Set to true to collect the get_contacts data each sign on. This is slow.(populates $rpx_contacts global)');
+$rpx_advanced['RPX_COLLECT_EMAIL']      = array('default' => 'true', 'desc' => 'Collect email addresses for providers that do not offer them.');
+
 
 $rpx_advanced_array = get_option(RPX_ADVANCED_OPTION);
 foreach($rpx_advanced as $key => $val) {

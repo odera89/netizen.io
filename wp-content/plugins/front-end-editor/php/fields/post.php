@@ -13,9 +13,6 @@ abstract class FEE_Field_Post extends FEE_Field_Base {
 
 		if ( FEE_Core::$options->group_post ) {
 			add_action( 'post_class', array( __CLASS__, 'post_class' ) );
-
-			if ( FEE_Core::$options->group_post_button )
-				add_filter( 'edit_post_link', array( __CLASS__, 'edit_post_link' ) );
 		}
 	}
 
@@ -229,7 +226,7 @@ class FEE_Field_Terms extends FEE_Field_Post {
 				'selected' => $selected,
 				'hide_empty' => false,
 				'hierarchical' => true,
-				'show_option_none' => __( '&mdash; None &mdash;', 'front-end-editor' ),
+				'show_option_none' => ' ',
 				'echo' => false
 			) );
 		}

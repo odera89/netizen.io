@@ -10,7 +10,6 @@ class JanrainCaptureAPI {
 
   protected $args;
   protected $capture_addr;
-  private $name;
   public $access_token;
   public $refresh_token;
   public $expires;
@@ -23,12 +22,18 @@ class JanrainCaptureAPI {
    * @param string $name
    *   The plugin name to use as a namespace
    */
-  function __construct($name) {
-    $this->name = $name;
+  function __construct() {
     $this->args = array();
-    $this->args['client_id'] = get_option($this->name . '_client_id');
-    $this->args['client_secret'] = get_option($this->name . '_client_secret');
-    $this->capture_addr = get_option($this->name . '_address');
+    if (JanrainCapture::get_option(JanrainCapture::$name . '_ui_type') == "Capture 1.0") {
+      $this->args['client_id'] = JanrainCapture::get_option(JanrainCapture::$name . '_client_id');
+      $this->args['client_secret'] = JanrainCapture::get_option(JanrainCapture::$name . '_client_secret');
+      $this->capture_addr = "https://" . JanrainCapture::get_option(JanrainCapture::$name . '_address');
+    } elseif (JanrainCapture::get_option(JanrainCapture::$name . '_ui_type') == "Capture 2.0") {
+      $this->args['client_id'] = JanrainCapture::get_option(JanrainCapture::$name . '_widget_client_id');
+      $this->args['client_secret'] = JanrainCapture::get_option(JanrainCapture::$name . '_widget_client_secret');
+      $this->capture_addr = JanrainCapture::get_option(JanrainCapture::$name . '_widget_address');
+      
+    }
   }
 
   /**
@@ -45,7 +50,7 @@ class JanrainCaptureAPI {
    */
   protected function call($command, $arg_array = null, $access_token = null) {
 
-    $url = "https://" . $this->capture_addr . "/$command";
+    $url = $this->capture_addr . "/$command";
 
     $headers = array();
     if (isset($access_token))
@@ -53,7 +58,7 @@ class JanrainCaptureAPI {
 
     if (isset($arg_array)) {
       $headers['Content-Type'] = 'application/x-www-form-urlencoded';
-      $arg_array = array_merge($arg_array, $this->args);
+      $arg_array = array_merge($this->args, $arg_array);
       $result = wp_remote_post($url, array(
         'method' => 'POST',
         'body' => $arg_array,
@@ -112,9 +117,9 @@ class JanrainCaptureAPI {
     if (!$this->access_token || !$this->refresh_token || !$this->expires)
       return false;
     $results = array();
-    $results[] = update_user_meta($user_id, $this->name . '_access_token', $this->access_token);
-    $results[] = update_user_meta($user_id, $this->name . '_refresh_token', $this->refresh_token);
-    $results[] = update_user_meta($user_id, $this->name . '_expires', $this->expires);
+    $results[] = update_user_meta($user_id, JanrainCapture::$name . '_access_token', $this->access_token);
+    $results[] = update_user_meta($user_id, JanrainCapture::$name . '_refresh_token', $this->refresh_token);
+    $results[] = update_user_meta($user_id, JanrainCapture::$name . '_expires', $this->expires);
     return !array_search(false, $results);
   }
 
@@ -130,18 +135,25 @@ class JanrainCaptureAPI {
    */
   public function new_access_token($auth_code, $redirect_uri) {
     $command = "oauth/token";
-    $arg_array = array('code' => $auth_code,
-      'redirect_uri' => $redirect_uri,
-      'grant_type' => 'authorization_code'
-    );
-
+    if(JanrainCapture::get_option(JanrainCapture::$name . '_ui_type') == "Capture 2.0") {
+      $arg_array = array('code' => $auth_code,
+        'redirect_uri' => $redirect_uri,
+        'grant_type' => 'authorization_code',
+        'client_id' => JanrainCapture::get_option(JanrainCapture::$name . '_widget_client_id'),
+        'client_secret' => JanrainCapture::get_option(JanrainCapture::$name . '_widget_client_secret')
+      );
+    } else {
+      $arg_array = array('code' => $auth_code,
+        'redirect_uri' => $redirect_uri,
+        'grant_type' => 'authorization_code',
+      );
+    }
     $json_data = $this->call($command, $arg_array);
     if ($json_data) {
       $this->update_capture_token($json_data);
-      do_action($this->name . '_new_access_token', $json_data);
+      do_action(JanrainCapture::$name . '_new_access_token', $json_data);
       return true;
     }
-
     return false;
   }
 
@@ -156,7 +168,7 @@ class JanrainCaptureAPI {
       $current_user = wp_get_current_user();
       if (!$current_user->ID)
         return false;
-      $this->refresh_token = get_user_meta($current_user->ID, $this->name . '_refresh_token', true);
+      $this->refresh_token = get_user_meta($current_user->ID, JanrainCapture::$name . '_refresh_token', true);
     }
 
     if (!$this->refresh_token)
@@ -171,7 +183,7 @@ class JanrainCaptureAPI {
 
     if ($json_data) {
       $this->update_capture_token($json_data);
-      do_action($this->name . '_refresh_access_token', $json_data);
+      do_action(JanrainCapture::$name . '_refresh_access_token', $json_data);
       return true;
     }
 
@@ -190,9 +202,9 @@ class JanrainCaptureAPI {
     if (!$this->access_token) {
       $current_user = wp_get_current_user();
       if ($current_user->ID) {
-        $this->access_token = get_user_meta($current_user->ID, $this->name . '_access_token', true);
-        $this->refresh_token = get_user_meta($current_user->ID, $this->name . '_refresh_token', true);
-        $this->expires = get_user_meta($current_user->ID, $this->name . '_expires', true);
+        $this->access_token = get_user_meta($current_user->ID, JanrainCapture::$name . '_access_token', true);
+        $this->refresh_token = get_user_meta($current_user->ID, JanrainCapture::$name . '_refresh_token', true);
+        $this->expires = get_user_meta($current_user->ID, JanrainCapture::$name . '_expires', true);
       }
     }
 
@@ -224,5 +236,60 @@ class JanrainCaptureAPI {
 
     return $user_entity;
   }
-}
 
+  /**
+   * Fetches the Engage API key to get share settings
+   *
+   * @return mixed
+   *   The API key or false
+   */
+  public function rpx_api_key() {
+    $client_id =  JanrainCapture::get_option(JanrainCapture::$name . '_client_id', false, true);
+    $client_secret =  JanrainCapture::get_option(JanrainCapture::$name . '_client_secret', false, true);
+    $rpx_key = $this->call('settings/get', array(
+      'client_id' => $client_id,
+      'client_secret' => $client_secret,
+      'key' => 'rpx_key',
+      'for_client_id' => $this->args['client_id']
+    ));
+    if ($rpx_key === false)
+      return false;
+    if (!$rpx_key || !$rpx_key['result']) {
+      $rpx_key = $this->call('settings/get', array('key' => 'rpx_realm', 'for_client_id' => $this->args['client_id']));
+      if (!$rpx_key || !$rpx_key['result'])
+        return null;
+    }
+    return $rpx_key['result'];
+  }
+
+  /**
+   * Fetches the Engage share providers and realm name
+   *
+   * @return boolean
+   *   Boolean success
+   */
+  public function rpx_lookup_rp() {
+    $key = JanrainCapture::get_option(JanrainCapture::$name . '_rpx_api_key');
+    if (!$key)
+      return false;
+
+    $url = "https://rpxnow.com/plugin/lookup_rp";
+    $headers = array('Accept-encoding' => 'identity');
+    $arg_array = array(
+      'format' => 'json',
+      'apiKey' => $key,
+      'pluginName' => 'wordpress-capture',
+      'pluginVersion' => JanrainCapture::get_plugin_version()
+    );
+    $result = wp_remote_post($url, array(
+      'method' => 'POST',
+      'body' => $arg_array,
+      'headers' => $headers
+    ));
+    if (is_wp_error($result) || !isset($result['body']))
+      return false;
+
+    $json_data = json_decode($result['body'], true);
+    return $json_data;
+  }
+}

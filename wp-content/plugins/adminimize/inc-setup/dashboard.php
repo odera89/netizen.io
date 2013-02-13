@@ -12,15 +12,23 @@ if ( ! function_exists( 'add_action' ) ) {
 // retrun registered widgets; only on page index/dashboard :(
 add_action( 'wp_dashboard_setup', '_mw_adminimize_dashboard_setup', 99 );
 
-function _mw_adminimize_dashboard_setup () {
+function _mw_adminimize_dashboard_setup() {
 	global $wp_meta_boxes;
 	
-	$adminimizeoptions = get_option( 'mw_adminimize' );
-	$widgets = _mw_adminimize_get_dashboard_widgets();
+	if ( is_multisite() && is_plugin_active_for_network( MW_ADMIN_FILE ) )
+		$adminimizeoptions = get_site_option( 'mw_adminimize' );
+	else
+		$adminimizeoptions = get_option( 'mw_adminimize' );
 	
+	$widgets = _mw_adminimize_get_dashboard_widgets();
 	$adminimizeoptions['mw_adminimize_dashboard_widgets'] = $widgets;
-	if ( current_user_can( 'manage_options' ) )
-		update_option( 'mw_adminimize', $adminimizeoptions );
+	
+	if ( current_user_can( 'manage_options' ) ) {
+		if ( is_multisite() && is_plugin_active_for_network( MW_ADMIN_FILE ) )
+			update_site_option( 'mw_adminimize', $adminimizeoptions );
+		else
+			update_option( 'mw_adminimize', $adminimizeoptions );
+	}
 	
 	// exclude super admin
 	if ( _mw_adminimize_exclude_super_admin() )

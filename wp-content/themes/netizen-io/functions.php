@@ -8,6 +8,21 @@ just edit things like thumbnail sizes, header images,
 sidebars, comments, ect.
 */
 
+
+
+/* Posts 2 Posts */
+function my_connection_types() {
+	p2p_register_connection_type( array(
+		'name' => 'post_to_threat',
+		'from' => 'post',
+		'to' => 'threat'
+	) );
+}
+add_action( 'p2p_init', 'my_connection_types' );
+
+
+/* BONES */
+
 // Get Bones Core Up & Running!
 require_once('library/bones.php');            // core functions (don't remove)
 require_once('library/plugins.php');          // plugins & extra functions (optional)

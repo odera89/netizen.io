@@ -2,48 +2,67 @@
 
 class P2P_Connection_Type {
 
-	public $indeterminate = false;
+	protected $directed_class = 'P2P_Directed_Connection_Type';
 
-	public $object;
+	protected $arrow = '&rarr;';
 
 	public $side;
 
 	public $cardinality;
 
-	public $title;
-
 	public $labels;
 
-	public function __construct( $args ) {
-		foreach ( array( 'from', 'to' ) as $direction ) {
-			$this->object[ $direction ] = _p2p_pluck( $args, $direction . '_object' );
+	protected $title;
 
-			$class = 'P2P_Side_' . ucfirst( $this->object[ $direction ] );
+	public function __construct( $args, $sides ) {
+		$this->side = $sides;
 
-			$this->side[ $direction ] = new $class( _p2p_pluck( $args, $direction . '_query_vars' ) );
-		}
-
-		if ( $this->object['from'] == $this->object['to'] ) {
-			if ( 'post' == $this->object['to'] ) {
-				$common = array_intersect( $this->side['from']->post_type, $this->side['to']->post_type );
-
-				if ( !empty( $common ) )
-					$this->indeterminate = true;
-			}
-		} else {
-			$args['self_connections'] = true;
-		}
+		$this->set_self_connections( $args );
 
 		$this->set_cardinality( _p2p_pluck( $args, 'cardinality' ) );
 
-		$this->set_labels( $args );
+		$labels = array();
+		foreach ( array( 'from', 'to' ) as $key ) {
+			$labels[ $key ] = (array) _p2p_pluck( $args, $key . '_labels' );
+		}
 
-		$this->title = $this->expand_title( _p2p_pluck( $args, 'title' ) );
+		$this->labels = $labels;
 
 		$this->fields = $this->expand_fields( _p2p_pluck( $args, 'fields' ) );
 
 		foreach ( $args as $key => $value ) {
 			$this->$key = $value;
+		}
+	}
+
+	public function get_field( $field, $direction ) {
+		$value = $this->$field;
+
+		if ( 'title' == $field )
+			return $this->expand_title( $value, $direction );
+
+		if ( 'labels' == $field )
+			return $this->expand_labels( $value, $direction );
+
+		if ( false === $direction )
+			return $value;
+
+		return $value[ $direction ];
+	}
+
+	function _directions_for_admin( $direction, $show_ui ) {
+		return array_intersect(
+			_p2p_expand_direction( $show_ui ),
+			_p2p_expand_direction( $direction )
+		);
+	}
+
+	private function set_self_connections( &$args ) {
+		$from_side = $this->side['from'];
+		$to_side = $this->side['to'];
+
+		if ( !$from_side->is_same_type( $to_side ) ) {
+			$args['self_connections'] = true;
 		}
 	}
 
@@ -78,43 +97,39 @@ class P2P_Connection_Type {
 		}
 	}
 
-	private function set_labels( &$args ) {
-		foreach ( array( 'from', 'to' ) as $key ) {
-			$labels = _p2p_pluck( $args, $key . '_labels' );
+	private function expand_labels( $additional_labels, $key ) {
+		$additional_labels['create'] = __( 'Create connections', P2P_TEXTDOMAIN );
 
-			if ( empty( $labels ) )
-				$labels = $this->side[ $key ]->get_labels();
-			else
-				$labels = (object) $labels;
+		$labels = clone $this->side[ $key ]->get_labels();
 
-			$this->labels[ $key ] = $labels;
-		}
+		foreach ( $additional_labels as $key => $var )
+			$labels->$key = $var;
+
+		return $labels;
 	}
 
-	private function expand_title( $title ) {
-		if ( $title && !is_array( $title ) ) {
-			return array(
-				'from' => $title,
-				'to' => $title,
-			);
-		}
+	private function expand_title( $title, $key ) {
+		if ( $title && !is_array( $title ) )
+			return $title;
 
-		foreach ( array( 'from', 'to' ) as $key ) {
-			if ( isset( $title[$key] ) )
-				continue;
+		if ( isset( $title[$key] ) )
+			return $title[$key];
 
-			$other_key = ( 'from' == $key ) ? 'to' : 'from';
+		$other_key = ( 'from' == $key ) ? 'to' : 'from';
 
-			$title[$key] = sprintf(
-				__( 'Connected %s', P2P_TEXTDOMAIN ),
-				$this->side[ $other_key ]->get_title()
-			);
-		}
-
-		return $title;
+		return sprintf(
+			__( 'Connected %s', P2P_TEXTDOMAIN ),
+			$this->side[ $other_key ]->get_title()
+		);
 	}
 
 	public function __call( $method, $args ) {
+		if ( ! method_exists( 'P2P_Directed_Connection_Type', $method ) ) {
+			trigger_error( "Method '$method' does not exist.", E_USER_ERROR );
+			return;
+		}
+
+		// TODO: make find_direction() return the normalized item and pass that along
 		$directed = $this->find_direction( $args[0] );
 		if ( !$directed ) {
 			trigger_error( sprintf( "Can't determine direction for '%s' type.", $this->name ), E_USER_WARNING );
@@ -135,8 +150,11 @@ class P2P_Connection_Type {
 		if ( !in_array( $direction, array( 'from', 'to', 'any' ) ) )
 			return false;
 
-		if ( $instantiate )
-			return new P2P_Directed_Connection_Type( $this, $direction );
+		if ( $instantiate ) {
+			$class = $this->directed_class;
+
+			return new $class( $this, $direction );
+		}
 
 		return $direction;
 	}
@@ -146,48 +164,91 @@ class P2P_Connection_Type {
 	 *
 	 * @param mixed A post type, object or object id.
 	 * @param bool Whether to return an instance of P2P_Directed_Connection_Type or just the direction
+	 * @param string An object type, such as 'post' or 'user'
 	 *
 	 * @return bool|object|string False on failure, P2P_Directed_Connection_Type instance or direction on success.
 	 */
-	public function find_direction( $arg, $instantiate = true ) {
+	public function find_direction( $arg, $instantiate = true, $object_type = null ) {
 		if ( is_array( $arg ) )
 			$arg = reset( $arg );
 
+		if ( $object_type ) {
+			$direction = $this->direction_from_object_type( $object_type );
+			if ( !$direction )
+				return false;
+
+			if ( in_array( $direction, array( 'from', 'to' ) ) )
+				return $this->set_direction( $direction, $instantiate );
+		}
+
+		$direction = $this->direction_from_item( $arg );
+
+		if ( $direction )
+			return $this->set_direction( $direction, $instantiate );
+
+		return false;
+	}
+
+	protected function choose_direction( $direction ) {
+		return $direction;
+	}
+
+	protected function direction_from_item( $arg ) {
 		foreach ( array( 'from', 'to' ) as $direction ) {
-			if ( !$this->side[ $direction ]->item_recognize( $arg ) )
+			$item = $this->side[ $direction ]->item_recognize( $arg );
+
+			if ( !$item )
 				continue;
 
-			if ( $this->indeterminate )
-				$direction = $this->reciprocal ? 'any' : 'from';
-
-			return $this->set_direction( $direction, $instantiate );
+			return $this->choose_direction( $direction );
 		}
 
 		return false;
 	}
 
-	// Used in each_connected()
-	private function find_direction_multiple( $post_types ) {
-		$possible_directions = array();
+	protected function direction_from_object_type( $current ) {
+		$from = $this->side['from']->get_object_type();
+		$to = $this->side['to']->get_object_type();
 
+		if ( $from == $to && $current == $from )
+			return 'any';
+
+		if ( $current == $from )
+			return 'to';
+
+		if ( $current == $to )
+			return 'from';
+
+		return false;
+	}
+
+	public function direction_from_types( $object_type, $post_types = null ) {
 		foreach ( array( 'from', 'to' ) as $direction ) {
-			if ( 'post' == $this->object[$direction] ) {
-				foreach ( $post_types as $post_type ) {
-					if ( !$this->side[ $direction ]->item_recognize( $post_type ) ) {
-						$possible_directions[] = $direction;
-						break;
-					}
-				}
+			if ( !$this->_type_check( $direction, $object_type, $post_types ) )
+				continue;
+
+			return $this->choose_direction( $direction );
+		}
+
+		return false;
+	}
+
+	private function _type_check( $direction, $object_type, $post_types ) {
+		if ( $object_type != $this->side[ $direction ]->get_object_type() )
+			return false;
+
+		$side = $this->side[ $direction ];
+
+		if ( !method_exists( $side, 'recognize_post_type' ) )
+			return true;
+
+		foreach ( (array) $post_types as $post_type ) {
+			if ( $side->recognize_post_type( $post_type ) ) {
+				return true;
 			}
 		}
 
-		if ( empty( $possible_directions ) )
-			return false;
-
-		if ( count( $possible_directions ) > 1 )
-			return 'any';
-
-		return reset( $possible_directions );
+		return false;
 	}
 
 	/** Alias for get_prev() */
@@ -277,11 +338,24 @@ class P2P_Connection_Type {
 		$post_types = array_unique( wp_list_pluck( $items, 'post_type' ) );
 
 		if ( count( $post_types ) > 1 ) {
-			$direction = $this->find_direction_multiple( $post_types );
 			$extra_qv['post_type'] = 'any';
-		} else {
-			$direction = $this->find_direction( $post_types[0], false );
 		}
+
+		$possible_directions = array();
+
+		foreach ( array( 'from', 'to' ) as $direction ) {
+			$side = $this->side[ $direction ];
+
+			if ( 'post' == $side->get_object_type() ) {
+				foreach ( $post_types as $post_type ) {
+					if ( $side->recognize_post_type( $post_type ) ) {
+						$possible_directions[] = $direction;
+					}
+				}
+			}
+		}
+
+		$direction = _p2p_compress_direction( $possible_directions );
 
 		if ( !$direction )
 			return false;
@@ -298,7 +372,11 @@ class P2P_Connection_Type {
 
 		$q = $directed->get_connected( $items, $extra_qv, 'abstract' );
 
-		p2p_distribute_connected( $items, $q->items, $prop_name );
+		$raw_connected = array();
+		foreach ( $q->items as $item )
+			$raw_connected[] = $item->get_object();
+
+		p2p_distribute_connected( $items, $raw_connected, $prop_name );
 	}
 
 	public function get_desc() {
@@ -306,19 +384,47 @@ class P2P_Connection_Type {
 			$$key = $this->side[ $key ]->get_desc();
 		}
 
-		if ( $this->indeterminate )
-			$arrow = '&harr;';
-		else
-			$arrow = '&rarr;';
+		$label = "$from {$this->arrow} $to";
 
-		$label = "$from $arrow $to";
-
-		$title = $this->title[ 'from' ];
+		$title = $this->get_field( 'title', 'from' );
 
 		if ( $title )
 			$label .= " ($title)";
 
 		return $label;
+	}
+}
+
+
+class P2P_Indeterminate_Connection_Type extends P2P_Connection_Type {
+
+	protected $directed_class = 'P2P_Indeterminate_Directed_Connection_Type';
+
+	protected $arrow = '&harr;';
+
+	protected function choose_direction( $direction ) {
+		return 'from';
+	}
+
+	function _directions_for_admin( $direction, $show_ui ) {
+		return parent::_directions_for_admin( 'any', $show_ui );
+	}
+}
+
+
+class P2P_Reciprocal_Connection_Type extends P2P_Indeterminate_Connection_Type {
+
+	protected function choose_direction( $direction ) {
+		return 'any';
+	}
+
+	function _directions_for_admin( $direction, $show_ui ) {
+		if ( $show_ui )
+			$directions = array( 'any' );
+		else
+			$directions = array();
+
+		return $directions;
 	}
 }
 

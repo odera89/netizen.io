@@ -229,23 +229,27 @@ function rpx_admin_menu(){
 }
 
 function rpx_admin_menu_register(){
-  register_setting( 'rpx_settings_group', RPX_API_KEY_OPTION, 'rpx_process_api_key' );
-  register_setting( 'rpx_settings_group', RPX_VEMAIL_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_COMMENT_OPTION, 'rpx_process_clog' );
-  register_setting( 'rpx_settings_group', RPX_SOCIAL_OPTION, 'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_API_KEY_OPTION,        'rpx_process_api_key' );
+  register_setting( 'rpx_settings_group', RPX_VEMAIL_OPTION,         'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_COMMENT_OPTION,        'rpx_process_clog' );
+  register_setting( 'rpx_settings_group', RPX_SOCIAL_OPTION,         'rpx_process_bool' );
   register_setting( 'rpx_settings_group', RPX_SOCIAL_COMMENT_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_S_LOC_OPTION, 'rpx_process_sloc' );
-  register_setting( 'rpx_settings_group', RPX_AUTOREG_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_VERIFYNAME_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_AVATAR_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_S_STYLE_OPTION, 'rpx_process_sstyle' );
-  register_setting( 'rpx_settings_group', RPX_S_TXT_OPTION, 'rpx_process_txt' );
-  register_setting( 'rpx_settings_group', RPX_PARAMS_OPTION, 'rpx_process_params' );
-  register_setting( 'rpx_settings_group', RPX_REMOVABLE_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_SIGNIN_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_WPLOGIN_OPTION, 'rpx_process_bool' );
-  register_setting( 'rpx_settings_group', RPX_SHARE_COUNT_OPTION, 'rpx_process_shct' );
-  register_setting( 'rpx_settings_group', RPX_NEW_WIDGET_OPTION, 'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_S_LOC_OPTION,          'rpx_process_sloc' );
+  register_setting( 'rpx_settings_group', RPX_AUTOREG_OPTION,        'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_VERIFYNAME_OPTION,     'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_AVATAR_OPTION,         'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_S_STYLE_OPTION,        'rpx_process_sstyle' );
+  register_setting( 'rpx_settings_group', RPX_S_TXT_OPTION,          'rpx_process_txt'    );
+  register_setting( 'rpx_settings_group', RPX_PARAMS_OPTION,         'rpx_process_params' );
+  register_setting( 'rpx_settings_group', RPX_REMOVABLE_OPTION,      'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_SIGNIN_OPTION,         'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_WPLOGIN_OPTION,        'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_SHARE_COUNT_OPTION,    'rpx_process_shct' );
+  register_setting( 'rpx_settings_group', RPX_NEW_WIDGET_OPTION,     'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_NEW_SHARE_OPTION,      'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_SHARE_AUTH_OPTION,     'rpx_process_bool' );
+  register_setting( 'rpx_settings_group', RPX_SHARE_REG_OPTION,      'rpx_proccess_shreg' );
+
   register_setting( 'rpx_string_settings_group', RPX_STRINGS_OPTION, 'rpx_process_strings' );
   register_setting( 'rpx_advanced_settings_group', RPX_ADVANCED_OPTION, 'rpx_process_strings' );
   return true;
@@ -257,6 +261,23 @@ function rpx_process_bool($bool){
   }else{
     return 'false';
   }
+}
+
+function rpx_proccess_shreg($bool){
+  if (rpx_process_bool($bool)){
+    if ($bool == 'true'){
+      update_option(RPX_NEW_WIDGET_OPTION, 'true');
+      update_option(RPX_SHARE_AUTH_OPTION, 'true');
+      update_option(RPX_AUTOREG_OPTION, 'true');
+      update_option(RPX_SIGNIN_OPTION, 'true');
+      update_option(RPX_VERIFYNAME_OPTION, 'false');
+      $advanced_opts = get_option(RPX_ADVANCED_OPTION);
+      $advanced_opts['RPX_COLLECT_EMAIL'] = 'false';
+      update_option(RPX_ADVANCED_OPTION, $advanced_opts);
+    }
+    return $bool;
+  }
+  return 'false';
 }
 
 function rpx_process_sloc($sloc){
@@ -576,6 +597,27 @@ function rpx_process_user($action){/*Using a switch for visual clarity, this may
     case 'regdirect':
       rpx_redirect(rpx_get_reg_url());
       break;
+    case 'skipemail':
+      $skipemail = rpx_new_session();
+      if ($skipemail !== false) $skipemail = rpx_placeholder_email();
+      if ($skipemail !== false) $skipemail = rpx_create_wp_user();
+      if ($skipemail !== false) $skipemail = rpx_signon_wp_user();      
+      if ($skipemail !== false) return true;
+      rpx_message('skipemail failure', 'debug');
+      rpx_process_user('regdirect');
+      return false;
+      break;
+    case 'skiplock':
+      $skiplock = rpx_unlock_user();
+      if ($skiplock !== false) $skiplock = rpx_new_session();
+      if ($skiplock !== false) $skiplock = rpx_placeholder_email();
+      if ($skiplock !== false) $skiplock = rpx_update_wp_user(true,true);
+      if ($skiplock !== false) $skipemail = rpx_signon_wp_user();      
+      if ($skiplock !== false) return true;
+      rpx_message('skiplock failure', 'debug');
+      rpx_process_user('regdirect');
+      return false;
+      break;
     case 'getemail':
       $getemail = rpx_lock_user();
       if ($getemail !== false) $getemail = rpx_new_session();
@@ -740,6 +782,13 @@ function rpx_test_wp_user(){
     $autoreg = false;
   }
   $tests['autoreg'] = $autoreg;
+  
+  if (RPX_COLLECT_EMAIL == 'true') {
+    $rpx_collect = true;
+  }else{
+    $rpx_collect = false;
+  }
+  $tests['rpx_collect'] = $rpx_collect;
   /*End of sequential tests*/
 
   //var_dump($tests); exit;//expert debug point
@@ -751,6 +800,10 @@ function rpx_test_wp_user(){
 
   if ($allow_login === true && $active_user === true && $rpx_locked === false){
     return 'engage';
+  }
+
+  if ($allow_login === true && $autoreg === true && $rpx_collect === false && $rpx_locked === true && $rpx_match === true && ($rpx_email === false || $email_found === true)){
+    return 'skiplock';
   }
 
   if ($allow_login === true && $rpx_match === true && $rpx_locked === true && ($rpx_email === false || $email_found === true || $rpx_valid === false)){
@@ -777,7 +830,11 @@ function rpx_test_wp_user(){
     return 'getuser';
   }
 
-  if ($allow_login === true && $autoreg === true && $rpx_match === false && ($rpx_email === false || $email_found === true)){
+  if ($allow_login === true && $autoreg === true && $rpx_match === false && $rpx_collect === false && ($rpx_email === false || $email_found === true)){
+    return 'skipemail';
+  }
+
+  if ($allow_login === true && $autoreg === true && $rpx_match === false && $rpx_collect === true && ($rpx_email === false || $email_found === true)){
     return 'getemail';
   }
 

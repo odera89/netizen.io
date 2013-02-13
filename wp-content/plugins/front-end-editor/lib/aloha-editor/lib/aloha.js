@@ -4955,7 +4955,8 @@ jQuery.event = {
 		return event.result;
 	},
 
-	props: "altKey attrChange attrName bubbles button cancelable charCode clientX clientY ctrlKey currentTarget data detail eventPhase fromElement handler keyCode layerX layerY metaKey newValue offsetX offsetY pageX pageY prevValue relatedNode relatedTarget screenX screenY shiftKey srcElement target toElement view wheelDelta which".split(" "),
+	// layerX and layerY removed. http://stackoverflow.com/questions/7825448/webkit-issues-with-event-layerx-and-event-layery
+	props: "altKey attrChange attrName bubbles button cancelable charCode clientX clientY ctrlKey currentTarget data detail eventPhase fromElement handler keyCode metaKey newValue offsetX offsetY pageX pageY prevValue relatedNode relatedTarget screenX screenY shiftKey srcElement target toElement view wheelDelta which".split(" "),
 
 	fix: function( event ) {
 		if ( event[ jQuery.expando ] ) {
@@ -7873,6 +7874,14 @@ function cloneFixAttributes( src, dest ) {
 	if ( nodeName === "object" ) {
 		dest.outerHTML = src.outerHTML;
 
+    // This path appears unavoidable for IE9. When cloning an object
+    // element in IE9, the outerHTML strategy above is not sufficient.
+    // If the src has innerHTML and the destination does not,
+    // copy the src.innerHTML into the dest.innerHTML. #10324
+    if ( jQuery.support.html5Clone && (src.innerHTML && !jQuery.trim(dest.innerHTML)) ) {
+      dest.innerHTML = src.innerHTML;
+    }
+
 	} else if ( nodeName === "input" && (src.type === "checkbox" || src.type === "radio") ) {
 		// IE6-8 fails to persist the checked state of a cloned checkbox
 		// or radio button. Worse, IE6-7 fail to give the cloned element
@@ -8017,7 +8026,10 @@ jQuery.extend({
 			// with an element if you are cloning the body and one of the
 			// elements on the page has a name or id of "length"
 			for ( i = 0; srcElements[i]; ++i ) {
-				cloneFixAttributes( srcElements[i], destElements[i] );
+				// Ensure that the destination node is not null; Fixes #9587
+				if ( destElements[i] ) {
+					cloneFixAttributes( srcElements[i], destElements[i] );
+				}
 			}
 		}
 
@@ -13611,7 +13623,7 @@ Ext.DomHelper = function(){
 
                     // Workaround for IE9, because it does not have this method anymore
                     // When we have moved to jQuery we won't need this anymore
-                    if (typeof range.createContextualFragmen == 'function') {
+                    if (typeof range.createContextualFragment === 'function') {
                     	frag = range.createContextualFragment(html);
                     }
                     else {
@@ -13630,7 +13642,7 @@ Ext.DomHelper = function(){
 
                         // Workaround for IE9, because it does not have this method anymore
                         // When we have moved to jQuery we won't need this anymore
-                        if (typeof range.createContextualFragmen == 'function') {
+                        if (typeof range.createContextualFragment === 'function') {
                         	frag = range.createContextualFragment(html);
                         }
                         else {
@@ -62268,7 +62280,8 @@ var rangy = (function() {
         modules: {},
         config: {
             alertOnWarn: false,
-            preferTextRange: false
+            // Note: this was set to true, see issue https://github.com/alohaeditor/Aloha-Editor/issues/474
+            preferTextRange: true
         }
     };
 
@@ -66536,13 +66549,15 @@ var Dom = Class.extend({
 		endOffset = rangeObject.endOffset;
 
 		// iterate through all sub nodes
-		startObject.contents().each(function(index) {
+		startObject.contents().each(function() {
+			var index;
 
 			// Try to read the nodeType property and return if we do not have permission
 			// ie.: frame document to an external URL
 			var nodeType;
 			try {
 				nodeType = this.nodeType;
+				index = that.getIndexInParent(this);
 			}
 			catch (e) {
 				return;
@@ -67737,8 +67752,9 @@ function ( jQuery, PluginManager ) {
 	//----------------------------------------
 	
 	/**
-	 * Hash table that will be populated through the loadPlugins method.
-	 * Maps the names of plugins with their urls for easy assess in the getPluginsUrl method
+	 * Maps the names of plugins with their urls for easy assess in the
+	 * getPluginUrl method.  Hash table that will be populated through the
+	 * loadPlugins method.
 	 */
 	var pluginPaths = {};
 
@@ -67755,7 +67771,7 @@ function ( jQuery, PluginManager ) {
 		 * It should be set by us and updated for the particular branch
 		 * @property
 		 */
-		version: '0.10.0',
+		version: '0.20.0',
 
 		/**
 		 * Array of editables that are managed by Aloha
@@ -68250,10 +68266,12 @@ function ( jQuery, PluginManager ) {
 		},
 
 		/**
-		 * Gets the Plugin Url
+		 * Gets the plugin's url.
+		 *
 		 * @method
-		 * @param {String} name
-		 * @return {String} url
+		 * @param {string} name The name with which the plugin was registered
+		 *                      with.
+		 * @return {string} The fully qualified url of this plugin.
 		 */
 		getPluginUrl: function (name) {
 			var url;
@@ -68275,6 +68293,7 @@ function ( jQuery, PluginManager ) {
 
 	return Aloha;
 });
+
 /*!
 * This file is part of Aloha Editor Project http://aloha-editor.org
 * Copyright © 2010-2011 Gentics Software GmbH, aloha@gentics.com
@@ -69255,7 +69274,7 @@ GENTICS.Utils.RangeObject = Class.extend({
 	 */
 	getRangeTree: function (root) {
 		// TODO cache rangeTrees
-		if (typeof root === 'undefined') {
+		if ( typeof root === 'undefined' ) {
 			root = this.getCommonAncestorContainer();
 		}
 
@@ -70001,6 +70020,11 @@ function(Aloha, jQuery, Ext, Class, console) {
 		 * the floating menu. If there is no config, tabs and groups will be generated programmatically
 		 */
 		fromConfig: false,
+		
+		/**
+		 * hide a tab
+		*/
+		hideTab: false,
 
 		/**
 		 * Initialize the floatingmenu
@@ -70046,7 +70070,6 @@ function(Aloha, jQuery, Ext, Class, console) {
 						'boolean' ) {
 					this.pin = Aloha.settings.floatingmenu.pin;
 				}
-
 
 				if ( typeof Aloha.settings.floatingmenu.width !==
 				         'undefined' ) {
@@ -70289,7 +70312,13 @@ function(Aloha, jQuery, Ext, Class, console) {
 			jQuery.each(this.tabs, function(index, tab) {
 				// let each tab generate its ext component and add them to the panel
 				try {
-					that.extTabPanel.add(tab.getExtComponent());
+					if (!tab.extPanel) {
+						// if the tab itself was not generated, we do this and add it to the panel
+						that.extTabPanel.add(tab.getExtComponent());
+					} else {
+						// otherwise, we will make sure that probably missing groups are generated, but don't add the tab to the menu (again)
+						tab.getExtComponent();
+					}
 				} catch(e) {
 					Aloha.Log.error(that,"Error while inserting tab: " + e);
 				}
@@ -70665,6 +70694,7 @@ function(Aloha, jQuery, Ext, Class, console) {
 			
 			// let the tabs layout themselves
 			jQuery.each(this.tabs, function(index, tab) {
+
 				// remember the active tab
 				if (tab.extPanel == activeExtTab) {
 					activeTab = tab;
@@ -70691,7 +70721,6 @@ function(Aloha, jQuery, Ext, Class, console) {
 						// this is the first visible tab (in case we need to switch to it)
 						firstVisibleTab = tab;
 					}
-
 					// check whether this visible tab is the last user activated tab and currently not active
 					if (that.userActivatedTab == tab.extPanel.title && tab.extPanel != activeExtTab) {
 						showUserActivatedTab = tab;
@@ -70703,6 +70732,15 @@ function(Aloha, jQuery, Ext, Class, console) {
 							Aloha.Log.debug(that, 'hiding tab strip for tab ' + tab.label);
 						}
 						that.extTabPanel.hideTabStripItem(tab.extPanel);
+					}
+				}
+
+				// hide a tab
+				if ( tab.label == that.hideTab ) {
+					that.extTabPanel.hideTabStripItem(tab.extPanel);
+
+					if ( activeExtTab.title == that.hideTab ) {
+						showUserActivatedTab = firstVisibleTab;
 					}
 				}
 			});
@@ -71977,7 +72015,7 @@ function(Aloha, jQuery, FloatingMenu, Class, Range) {
 		 * @hide
 		 */
 		getClonedMarkup4Wrapping: function(domobj) {
-			var wrapper = jQuery(domobj).clone().removeClass('preparedForRemoval').empty();
+			var wrapper = jQuery(domobj.outerHTML).removeClass('preparedForRemoval').empty();
 			if (wrapper.attr('class').length === 0) {
 				wrapper.removeAttr('class');
 			}
@@ -73811,8 +73849,9 @@ Aloha.Markup = Class.extend( {
 					if ( astext ) {
 						text += this.getFromSelectionTree( el.children, astext );
 					} else {
-						// when the html shall be fetched, we create a clone of the element and remove all the children
-						clone = jQuery( el.domobj ).clone( false ).empty();
+						// when the html shall be fetched, we create a clone of
+						// the element and remove all the children
+						clone = jQuery( el.domobj.outerHTML ).empty();
 						// then we do the recursion and add the selection into the clone
 						clone.html( this.getFromSelectionTree( el.children, astext ) );
 						// finally we get the html of the clone
@@ -74287,7 +74326,7 @@ Aloha.Markup = Class.extend( {
 				if ( lastObj && rangeObject.startContainer === lastObj
 					 && rangeObject.startOffset === lastObj.length ) {
 					returnObj = jQuery( '<p></p>' );
-					inside = jQuery( rangeObject.splitObject ).clone().contents();
+					inside = jQuery( rangeObject.splitObject.outerHTML ).contents();
 					returnObj.append( inside );
 					return returnObj;
 				}
@@ -74299,7 +74338,7 @@ Aloha.Markup = Class.extend( {
 				if ( rangeObject.startContainer.nodeName.toLowerCase() === 'br'
 					 && jQuery( rangeObject.startContainer ).hasClass( 'aloha-ephemera' ) ) {
 					returnObj = jQuery( '<p></p>' );
-					inside = jQuery( rangeObject.splitObject ).clone().contents();
+					inside = jQuery( rangeObject.splitObject.outerHTML ).contents();
 					returnObj.append( inside );
 					return returnObj;
 				}
@@ -74311,7 +74350,7 @@ Aloha.Markup = Class.extend( {
 				}
 		}
 
-		return jQuery( rangeObject.splitObject ).clone();
+		return jQuery( rangeObject.splitObject.outerHTML );
 	},
 
 	/**
@@ -74329,7 +74368,7 @@ Aloha.Markup = Class.extend( {
 		    jqNewObj = jQuery( '<' + nodeName + '></' + nodeName + '>' ),
 		    i;
 
-		// TODO what about events? css properties?
+		// TODO what about events?
 
 		// copy attributes
 		if ( jqOldObj[0].attributes ) {
@@ -74522,7 +74561,6 @@ function(jQuery, Observable) {
 
 		/**
 		 * @event unregister
-		 * @param odEntry
 		 * @param id
 		 */
 		unregister: function(id) {
@@ -74581,7 +74619,7 @@ function( jQuery, Registry ) {
 		handleContent: function ( content, options ) {
 			var handler,
 				handlers = this.getEntries();
-			
+
 			if ( typeof options.contenthandler === 'undefined') {
 				options.contenthandler = [];
 				for ( handler in handlers ) {
@@ -74817,9 +74855,12 @@ define('aloha/editable',[
 				// by catching the keydown we can prevent the browser from doing its own thing
 				// if it does not handle the keyStroke it returns true and therefore all other
 				// events (incl. browser's) continue
-				me.obj.keydown( function( event ) {
+				//me.obj.keydown( function( event ) {
+				//me.obj.add('.aloha-block', me.obj).live('keydown', function (event) { // live not working but would be usefull
+				me.obj.add('.aloha-block', me.obj).keydown(function (event) {
 					var letEventPass = Markup.preProcessKeyStrokes( event );
 					me.keyCode = event.which;
+
 					if (!letEventPass) {
 						// the event will not proceed to key press, therefore trigger smartContentChange
 						me.smartContentChange( event );
@@ -75304,7 +75345,12 @@ define('aloha/editable',[
 		 * @return contents of the editable
 		 */
 		getContents: function( asObject ) {
+			// Cloned nodes are problematic in IE7.  When trying to read/write
+			// to them, they can sometimes cause the browser to crash.
+			// The IE7 fix was moved to engine#copyAttributes() 
+			
 			var clonedObj = this.obj.clone( false );
+			//var clonedObj = jQuery(this.obj[0].outerHTML);
 
 			// do core cleanup
 			clonedObj.find( '.aloha-cleanme' ).remove();
@@ -75403,7 +75449,7 @@ define('aloha/editable',[
 				clearTimeout( this.sccTimerIdle );
 				clearTimeout( this.sccTimerDelay );
 
-				this.sccTimerDelay = setTimeout( function() {
+				this.sccTimerDelay = window.setTimeout( function() {
 					Aloha.trigger( 'aloha-smart-content-changed', {
 						'editable'        : me,
 						'keyIdentifier'   : event.originalEvent.keyIdentifier,
@@ -75462,7 +75508,7 @@ define('aloha/editable',[
 				// in the rare case idle time is lower then delay time
 				clearTimeout( this.sccTimerDelay );
 				clearTimeout( this.sccTimerIdle );
-				this.sccTimerIdle = setTimeout( function() {
+				this.sccTimerIdle = window.setTimeout( function() {
 					Aloha.trigger( 'aloha-smart-content-changed', {
 						'editable'        : me,
 						'keyIdentifier'   : null,
@@ -75793,10 +75839,13 @@ function(Aloha, jQuery, Class, PluginManager, console ) {
 							configObj = jQuery.merge(configObj, selectorConfig);
 						} else if (typeof selectorConfig === "object") {
 							configObj = {};
+							configObj['aloha-editable-selector'] = selector;
 							for (var k in selectorConfig) {
 								if ( selectorConfig.hasOwnProperty(k) ) {
 									if (selectorConfig[k] instanceof Array) {
-
+										//configObj[k] = [];
+										//configObj[k] = jQuery.extend(true, configObj[k], that.config[k], selectorConfig[k]);
+										configObj[k] = selectorConfig[k];
 									} else if (typeof selectorConfig[k] === "object") {
 										configObj[k] = {};
 										configObj[k] = jQuery.extend(true, configObj[k], that.config[k], selectorConfig[k]);									
@@ -76621,7 +76670,7 @@ function myQueryCommandValue(command, range) {
 		}
 
 		// "Return command's value."
-		return commands[command].value();
+		return commands[command].value(range);
 	});
 }
 //@}
@@ -76760,26 +76809,27 @@ function isCollapsedLineBreak(br) {
 		ref = ref.parentNode;
 	}
 
-	var refStyle = $_( ref ).hasAttribute("style") ? ref.getAttribute("style") : null;
-	ref.style.height = "auto";
-	ref.style.maxHeight = "none";
-	ref.style.minHeight = "0";
-	var space = document.createTextNode("\u200b");
+	var origStyle = {
+		height: ref.style.height,
+		maxHeight: ref.style.maxHeight,
+		minHeight: ref.style.minHeight
+	};
+
+	ref.style.height = 'auto';
+	ref.style.maxHeight = 'none';
+	ref.style.minHeight = '0';
+	var space = document.createTextNode('\u200b');
 	var origHeight = ref.offsetHeight;
 	if (origHeight == 0) {
-		throw "isCollapsedLineBreak: original height is zero, bug?";
+		throw 'isCollapsedLineBreak: original height is zero, bug?';
 	}
 	br.parentNode.insertBefore(space, br.nextSibling);
 	var finalHeight = ref.offsetHeight;
 	space.parentNode.removeChild(space);
-	if (refStyle === null) {
-		// Without the setAttribute() line, removeAttribute() doesn't work in
-		// Chrome 14 dev.  I have no idea why.
-		ref.setAttribute("style", "");
-		ref.removeAttribute("style");
-	} else {
-		ref.setAttribute("style", refStyle);
-	}
+
+	ref.style.height = origStyle.height;
+	ref.style.maxHeight = origStyle.maxHeight;
+	ref.style.minHeight = origStyle.minHeight;
 
 	// Allow some leeway in case the zwsp didn't create a whole new line, but
 	// only made an existing line slightly higher.  Firefox 6.0a2 shows this
@@ -76790,10 +76840,12 @@ function isCollapsedLineBreak(br) {
 // "An extraneous line break is a br that has no visual effect, in that
 // removing it from the DOM would not change layout, except that a br that is
 // the sole child of an li is not extraneous."
+
 //
 // FIXME: This doesn't work in IE, since IE ignores display: none in
 // contenteditable.
 function isExtraneousLineBreak(br) {
+
 	if (!isHtmlElement(br, "br")) {
 		return false;
 	}
@@ -76811,30 +76863,38 @@ function isExtraneousLineBreak(br) {
 	while ($_.getComputedStyle(ref).display == "inline") {
 		ref = ref.parentNode;
 	}
-	var refStyle = $_( ref ).hasAttribute("style") ? ref.getAttribute("style") : null;
-	ref.style.height = "auto";
-	ref.style.maxHeight = "none";
-	ref.style.minHeight = "0";
-	var brStyle = $_( br ).hasAttribute("style") ? br.getAttribute("style") : null;
+
+	var origStyle = {
+		height: ref.style.height,
+		maxHeight: ref.style.maxHeight,
+		minHeight: ref.style.minHeight
+	};
+
+	ref.style.height = 'auto';
+	ref.style.maxHeight = 'none';
+	ref.style.minHeight = '0';
+
 	var origHeight = ref.offsetHeight;
 	if (origHeight == 0) {
 		throw "isExtraneousLineBreak: original height is zero, bug?";
 	}
-	br.setAttribute("style", "display:none");
+
+	var origBrDisplay = br.style.display;
+	br.style.display = 'none';
 	var finalHeight = ref.offsetHeight;
-	if (refStyle === null) {
-		// Without the setAttribute() line, removeAttribute() doesn't work in
-		// Chrome 14 dev.  I have no idea why.
-		ref.setAttribute("style", "");
-		ref.removeAttribute("style");
-	} else {
-		ref.setAttribute("style", refStyle);
-	}
-	if (brStyle === null) {
+
+	// Restore original styles to the touched elements.
+	ref.style.height = origStyle.height;
+	ref.style.maxHeight = origStyle.maxHeight;
+	ref.style.minHeight = origStyle.minHeight;
+	br.style.display = origBrDisplay;
+
+	// https://github.com/alohaeditor/Aloha-Editor/issues/516
+	// look like it works in msie > 7
+	/* if (jQuery.browser.msie && jQuery.browser.version < 8) {
 		br.removeAttribute("style");
-	} else {
-		br.setAttribute("style", brStyle);
-	}
+		ref.removeAttribute("style");
+	} */
 
 	return origHeight == finalHeight;
 }
@@ -76901,7 +76961,7 @@ function collapseWhitespace(node, range) {
 
 	// iterate through the node data
 	for (var i = 0; i < node.data.length; ++i) {
-		if (/[\t\n\r ]/.test(node.data[i])) {
+		if (/[\t\n\r ]/.test(node.data.substr(i, 1))) {
 			// found a whitespace
 			if (!wsFound) {
 				// this is the first whitespace in the current sequence
@@ -76919,7 +76979,7 @@ function collapseWhitespace(node, range) {
 				}
 			}
 		} else {
-			newData += node.data[i];
+			newData += node.data.substr(i, 1);
 			wsFound = false;
 		}
 	}
@@ -77303,6 +77363,38 @@ function movePreservingRanges(node, newParent, newIndex, range) {
 	}
 }
 
+/**
+ * Copy all non empty attributes from an existing to a new element
+ * 
+ * @param {dom} element The source DOM element
+ * @param {dom} newElement The new DOM element which will get the attributes of the source DOM element
+ * @return void
+ */
+function copyAttributes( element, newElement ) {
+
+	// This is an IE7 workaround. We identified three places that were connected 
+	// to the mysterious ie7 crash:
+	// 1. Add attribute to dom element (Initialization of jquery-ui sortable)
+	// 2. Access the jquery expando attribute. Just reading the name is 
+	//    sufficient to make the browser vulnerable for the crash (Press enter)
+	// 3. On editable blur the Aloha.editables[0].getContents(); gets invoked.
+	//    This invokation somehow crashes the ie7. We assume that the access of 
+	//    shared expando attribute updates internal references which are not 
+	//    correclty handled during clone(); 
+	if ( jQuery.browser.msie && jQuery.browser.version >=7 && typeof element.attributes[jQuery.expando] !== 'undefined' ) {
+		jQuery(element).removeAttr(jQuery.expando);
+	}
+
+	for ( var i = 0; i < element.attributes.length; i++ ) {
+		if ( typeof newElement.setAttributeNS === 'function' ) {
+			newElement.setAttributeNS( element.attributes[i].namespaceURI, element.attributes[i].name, element.attributes[i].value );
+		} else if ( element.attributes[i].specified ) {
+			// fixes https://github.com/alohaeditor/Aloha-Editor/issues/515 
+			newElement.setAttribute( element.attributes[i].name, element.attributes[i].value );
+		}
+	}
+}
+
 function setTagName(element, newName, range) {
 	// "If element is an HTML element with local name equal to new name, return
 	// element."
@@ -77324,14 +77416,8 @@ function setTagName(element, newName, range) {
 	element.parentNode.insertBefore(replacementElement, element);
 
 	// "Copy all attributes of element to replacement element, in order."
-	for (var i = 0; i < element.attributes.length; i++) {
-		if (typeof replacementElement.setAttributeNS === 'function') {
-			replacementElement.setAttributeNS(element.attributes[i].namespaceURI, element.attributes[i].name, element.attributes[i].value);
-		} else {
-			replacementElement.setAttribute(element.attributes[i].name, element.attributes[i].value);
-		}
-	}
-
+	copyAttributes( element,  replacementElement );
+	
 	// "While element has children, append the first child of element as the
 	// last child of replacement element, preserving ranges."
 	while (element.childNodes.length) {
@@ -77343,10 +77429,10 @@ function setTagName(element, newName, range) {
 
 	// if the range still uses the old element, we modify it to the new one
 	if (range.startContainer === element) {
-		range.setStart(replacementElement, range.startOffset);
+		range.startContainer = replacementElement;
 	}
 	if (range.endContainer === element) {
-		range.setEnd(replacementElement, range.endOffset);
+		range.endContainer = replacementElement;
 	}
 
 	// "Return replacement element."
@@ -79107,6 +79193,126 @@ function setSelectionValue(command, newValue, range) {
 	});
 }
 
+/**
+ * attempt to retrieve a block like a table or an Aloha Block
+ * which is located one step right of the current caret position.
+ * If an appropriate element is found it will be returned or
+ * false otherwise
+ * 
+ * @param {element} node current node we're in
+ * @param {number} offset current offset within that node
+ * 
+ * @return the dom node if found or false if no appropriate
+ * element was found
+ */
+function getBlockAtNextPosition(node, offset) {
+	// if we're inside a text node we first have to check
+	// if there is nothing but tabs, newlines or the like
+	// after our current cursor position
+	if (node.nodeType === $_.Node.TEXT_NODE &&
+	offset < node.length) {
+		for (var i = offset; i < node.length; i++) {
+			if ((node.data.charAt(i) !== '\t' &&
+			node.data.charAt(i) !== '\r' &&
+			node.data.charAt(i) !== '\n') ||
+			node.data.charCodeAt(i) === 160) { // &nbsp;
+				// this is a character that has to be deleted first
+				return false;
+			}
+		}
+	}
+
+	// try the most simple approach first: the next sibling
+	// is a table
+	if (node.nextSibling &&
+	node.nextSibling.className &&
+	node.nextSibling.className.indexOf("aloha-table-wrapper") >= 0) {
+		return node.nextSibling;
+	}
+	
+	// since we got only ignorable whitespace here determine if
+	// our nodes parents next sibling is a table
+	if (node.parentNode &&
+	node.parentNode.nextSibling &&
+	node.parentNode.nextSibling.className &&
+	node.parentNode.nextSibling.className.indexOf("aloha-table-wrapper") >= 0) {
+		return node.parentNode.nextSibling;
+	}
+
+	// our parents nextsibling is a pure whitespace node such as
+	// generated by sourcecode indentation so we'll check for
+	// the next next sibling
+	if (node.parentNode &&
+	node.parentNode.nextSibling &&
+	isWhitespaceNode(node.parentNode.nextSibling) &&
+	node.parentNode.nextSibling.nextSibling &&
+	node.parentNode.nextSibling.nextSibling.className &&
+	node.parentNode.nextSibling.nextSibling.className.indexOf("aloha-table-wrapper") >= 0) {
+		return node.parentNode.nextSibling.nextSibling;
+	}
+
+	// Note: the search above works for tables, since they cannot be
+	// nested deeply in paragraphs and other formatting tags. If this code
+	// is extended to work also for other blocks, the search probably needs to be adapted
+}
+
+/**
+ * Attempt to retrieve a block like a table or an Aloha Block
+ * which is located right before the current position.
+ * If an appropriate element is found, it will be returned or
+ * false otherwise
+ * 
+ * @param {element} node current node
+ * @param {offset} offset current offset
+ * 
+ * @return dom node of found or false if no appropriate
+ * element was found
+ */
+function getBlockAtPreviousPosition(node, offset) {
+	if (node.nodeType === $_.Node.TEXT_NODE && offset > 0) {
+		for (var i = offset-1; i >= 0; i--) {
+			if ((node.data.charAt(i) !== '\t' &&
+			node.data.charAt(i) !== '\r' &&
+			node.data.charAt(i) !== '\n') ||
+			node.data.charCodeAt(i) === 160) { // &nbsp;
+				// this is a character that has to be deleted first
+				return false;
+			}
+		}
+	}
+
+	// try the previous sibling
+	if (node.previousSibling &&
+	node.previousSibling.className &&
+	node.previousSibling.className.indexOf("aloha-table-wrapper") >= 0) {
+		return node.previousSibling;
+	}
+
+	// try the parent's previous sibling
+	if (node.parentNode &&
+	node.parentNode.previousSibling &&
+	node.parentNode.previousSibling.className &&
+	node.parentNode.previousSibling.className.indexOf("aloha-table-wrapper") >= 0) {
+		return node.parentNode.previousSibling;
+	}
+
+	// the parent's previous sibling might be a whitespace node
+	if (node.parentNode &&
+	node.parentNode.previousSibling &&
+	isWhitespaceNode(node.parentNode.previousSibling) &&
+	node.parentNode.previousSibling.previousSibling &&
+	node.parentNode.previousSibling.previousSibling.className &&
+	node.parentNode.previousSibling.previousSibling.className.indexOf('aloha-table-wrapper') >= 0) {
+		return node.parentNode.previousSibling.previousSibling;
+	}
+
+	// Note: the search above works for tables, since they cannot be
+	// nested deeply in paragraphs and other formatting tags. If this code
+	// is extended to work also for other blocks, the search probably needs to be adapted
+
+	return false;
+}
+
 
 //@}
 ///// The backColor command /////
@@ -79590,7 +79796,7 @@ commands.removeformat = {
 			"hilitecolor",
 			"italic",
 			"strikethrough",
-			"underline",
+			"underline"
 		] ).forEach(function(command) {
 			setSelectionValue(command, null);
 		});
@@ -79926,27 +80132,51 @@ function fixDisallowedAncestors(node, range) {
 
 		// now that the parent has only the node as child (because we
 		// removed any existing empty text nodes), we can safely unwrap the
-		// node, and correct the range if necessary
+		// node's contents, and correct the range if necessary
 		if (node.parentNode.childNodes.length == 1) {
-			var correctStart = false;
-			var correctEnd = false;
-			if (range.startContainer === node.parentNode) {
-				correctStart = true;
+			var newStartOffset = range.startOffset;
+			var newEndOffset = range.endOffset;
+
+			if (range.startContainer === node.parentNode && range.startOffset > getNodeIndex(node)) {
+				// the node (1 element) will be replaced by its contents (contents().length elements)
+				newStartOffset = range.startOffset + (jQuery(node).contents().length - 1);
 			}
-			if (range.endContainer === node.parentNode) {
-				correctEnd = true;
+			if (range.endContainer === node.parentNode && range.endOffset > getNodeIndex(node)) {
+				// the node (1 element) will be replaced by its contents (contents().length elements)
+				newEndOffset = range.endOffset + (jQuery(node).contents().length - 1);
 			}
-			jQuery(node).unwrap();
-			if (correctStart) {
-				range.startContainer = node.parentNode;
-				range.startOffset = range.startOffset + getNodeIndex(node);
-			}
-			if (correctEnd) {
-				range.endContainer = node.parentNode;
-				range.endOffset = range.endOffset + getNodeIndex(node);
-			}
+			jQuery(node).contents().unwrap();
+			range.startOffset = newStartOffset;
+			range.endOffset = newEndOffset;
+			// after unwrapping, we are done
+			break;
 		} else {
+			// store the original parent
+			var originalParent = node.parentNode;
 			splitParent([node], range);
+			// check whether the parent did not change, so the split did not work, e.g.
+			// because we already reached the editing host itself.
+			// this situation can occur, e.g. when we insert a paragraph into an contenteditable span
+			// in such cases, we just unwrap the contents of the paragraph
+			if (originalParent === node.parentNode) {
+				// so we unwrap now
+				var newStartOffset = range.startOffset;
+				var newEndOffset = range.endOffset;
+
+				if (range.startContainer === node.parentNode && range.startOffset > getNodeIndex(node)) {
+					// the node (1 element) will be replaced by its contents (contents().length elements)
+					newStartOffset = range.startOffset + (jQuery(node).contents().length - 1);
+				}
+				if (range.endContainer === node.parentNode && range.endOffset > getNodeIndex(node)) {
+					// the node (1 element) will be replaced by its contents (contents().length elements)
+					newEndOffset = range.endOffset + (jQuery(node).contents().length - 1);
+				}
+				jQuery(node).contents().unwrap();
+				range.startOffset = newStartOffset;
+				range.endOffset = newEndOffset;
+				// after unwrapping, we are done
+				break;
+			}
 		}
 	}
 
@@ -80425,7 +80655,7 @@ function recordCurrentStatesAndValues(range) {
 
 	// "Add ("fontSize", node's effective command value for "fontSize") to
 	// overrides."
-	overrides.push("fontsize", getEffectiveCommandValue(node, "fontsize"));
+	overrides.push(["fontsize", getEffectiveCommandValue(node, "fontsize")]);
 
 	// "Return overrides."
 	return overrides;
@@ -80448,7 +80678,7 @@ function restoreStatesAndValues(overrides, range) {
 			// returns something different from override, call
 			// execCommand(command)."
 			if (typeof override == "boolean"
-			&& myQueryCommandState(command) != override) {
+			&& myQueryCommandState(command, range) != override) {
 				myExecCommand(command);
 
 			// "Otherwise, if override is a string, and command is not
@@ -80457,8 +80687,8 @@ function restoreStatesAndValues(overrides, range) {
 			// override)."
 			} else if (typeof override == "string"
 			&& command != "fontsize"
-			&& !areEquivalentValues(command, myQueryCommandValue(command), override)) {
-				myExecCommand(command, false, override);
+			&& !areEquivalentValues(command, myQueryCommandValue(command, range), override)) {
+				myExecCommand(command, false, override, range);
 
 			// "Otherwise, if override is a string; and command is "fontSize";
 			// and either there is a value override for "fontSize" that is not
@@ -80477,7 +80707,7 @@ function restoreStatesAndValues(overrides, range) {
 					&& !areLooselyEquivalentValues(command, getEffectiveCommandValue(node, "fontsize"), override)
 				)
 			)) {
-				myExecCommand("fontsize", false, override);
+				myExecCommand("fontsize", false, override, range);
 
 			// "Otherwise, continue this loop from the beginning."
 			} else {
@@ -80721,10 +80951,20 @@ function deleteContents() {
 		// node."
 		startNode.deleteData(startOffset, endOffset - startOffset);
 
+		// if deleting the text moved two spaces together, we replace the left one by a &nbsp;, which makes the two spaces a visible
+		// two space sequence
+		if (startOffset > 0 && startNode.data.substr(startOffset - 1, 1) === ' '
+		&& startOffset < startNode.data.length && startNode.data.substr(startOffset, 1) === ' ') {
+			startNode.replaceData(startOffset - 1, 1, '\xa0');
+		}
+
 		// "Canonicalize whitespace at (start node, start offset)."
 		canonicalizeWhitespace(startNode, startOffset);
 
 		// "Set range's end to its start."
+		// Ok, also set the range's start to its start, because modifying the text 
+		// might have somehow corrupted the range
+		range.setStart(range.startContainer, range.startOffset);
 		range.setEnd(range.startContainer, range.startOffset);
 
 		// "Restore states and values from overrides."
@@ -81429,6 +81669,42 @@ function canonicalizeWhitespace(node, offset) {
 ///// Indenting and outdenting /////
 //@{
 
+function cleanLists(node, range) {
+	// remove any whitespace nodes around list nodes
+	if (node) {
+		jQuery(node).find('ul,ol,li').each(function () {
+			jQuery(this).contents().each(function () {
+				if (isWhitespaceNode(this)) {
+					var index = getNodeIndex(this);
+
+					// if the range points to somewhere behind the removed text node, we reduce the offset
+					if (range.startContainer === this.parentNode && range.startOffset > index) {
+						range.startOffset--;
+					} else if (range.startContainer === this) {
+						// the range starts in the removed text node, let it start right before
+						range.startContainer = this.parentNode;
+						range.startOffset = index;
+					}
+					// same thing for end of the range
+					if (range.endContainer === this.parentNode && range.endOffset > index) {
+						range.endOffset--;
+					} else if (range.endContainer === this) {
+						range.endContainer = this.parentNode;
+						range.endOffset = index;
+					}
+					// finally remove the whitespace node
+					jQuery(this).remove();
+				}
+			});
+		});
+	}
+}
+
+
+//@}
+///// Indenting and outdenting /////
+//@{
+
 function indentNodes(nodeList, range) {
 	// "If node list is empty, do nothing and abort these steps."
 	if (!nodeList.length) {
@@ -82050,13 +82326,20 @@ function justifySelection(alignment, range) {
 	}
 }
 
-
 //@}
 ///// Create an end break /////
 //@{
 function createEndBreak() {
+	// https://github.com/alohaeditor/Aloha-Editor/issues/516
 	var endBr = document.createElement("br");
 	endBr.setAttribute("class", "aloha-end-br");
+
+	// the code below cannot work, since the endBr is created right above and not inserted into the DOM tree.
+//	if ( jQuery.browser.msie && jQuery.browser.version < 8 ) {
+//		var endTextNode = document.createTextNode(' ');
+//		endBr.insertBefore(endTextNode);
+//	}
+
 	return endBr;
 }
 
@@ -82066,6 +82349,7 @@ function createEndBreak() {
 //@{
 commands["delete"] = {
 	action: function(value, range) {
+
 		// "If the active range is not collapsed, delete the contents of the
 		// active range and abort these steps."
 		if (!range.collapsed) {
@@ -82148,9 +82432,12 @@ commands["delete"] = {
 			}
 		}
 
-		// collapse whitespace sequences
-		collapseWhitespace(node, range);
-		offset = range.startOffset;
+		// if the previous node is an aloha-table we want to delete it
+		var delBlock;
+		if (delBlock = getBlockAtPreviousPosition(node, offset)) {
+			delBlock.parentNode.removeChild(delBlock);
+			return;
+		}
 
 		// "If node is a Text node and offset is not zero, call collapse(node,
 		// offset) on the Selection. Then delete the contents of the range with
@@ -82158,12 +82445,22 @@ commands["delete"] = {
 		// steps."
 		if (node.nodeType == $_.Node.TEXT_NODE
 		&& offset != 0) {
+			range.setStart(node, offset - 1);
+			range.setEnd(node, offset - 1);
+			deleteContents(node, offset - 1, node, offset);
+			return;
+		}
+
+		// @iebug
+		// when inserting a special char via the plugin 
+		// there where problems deleting them again with backspace after insertation
+		// see https://github.com/alohaeditor/Aloha-Editor/issues/517
+		if (node.nodeType == $_.Node.TEXT_NODE
+		&& offset == 0 && jQuery.browser.msie) {
+			offset = 1;
 			range.setStart(node, offset);
 			range.setEnd(node, offset);
-			// fix range start container offset according to old code
-			// so we can still pass our range and have it modified, but
-			// also conform with the previous implementation
-			range.startOffset -= 1;
+			range.startOffset = 0;
 			deleteContents(range);
 			return;
 		}
@@ -82743,9 +83040,15 @@ commands.forwarddelete = {
 		}
 
 		// collapse whitespace in the node, if it is a text node
-		collapseWhitespace(node, range);
-		offset = range.startOffset;
+		canonicalizeWhitespace(range.startContainer, range.startOffset);
 
+		// if the next node is an aloha-table we want to delete it
+		var delBlock;
+		if (delBlock = getBlockAtNextPosition(node, offset)) {
+			delBlock.parentNode.removeChild(delBlock);
+			return;
+		}
+		
 		// "If node is a Text node and offset is not node's length:"
 		if (node.nodeType == $_.Node.TEXT_NODE
 		&& offset != getNodeLength(node)) {
@@ -83247,6 +83550,12 @@ commands.insertlinebreak = {
 			range.setStart(br.parentNode, 1 + getNodeIndex(br));
 			range.setEnd(br.parentNode, 1 + getNodeIndex(br));
 		}
+		
+		// IE7 is adding this styles: height: auto; min-height: 0px; max-height: none;
+		// with that there is the ugly "IE-editable-outline"
+		if (jQuery.browser.msie && jQuery.browser.version < 8) {
+			br.parentNode.removeAttribute("style");
+		}
 	}
 };
 
@@ -83268,9 +83577,13 @@ commands.insertorderedlist = {
 //@{
 commands.insertparagraph = {
 	action: function(value, range) {
-		
+
 		// "Delete the contents of the active range."
 		deleteContents(range);
+
+		// clean lists in the editing host, this will remove any whitespace nodes around lists
+		// because the following algorithm is not prepared to deal with them
+		cleanLists(getEditingHostOf(range.startContainer), range);
 
 		// "If the active range's start node is neither editable nor an editing
 		// host, abort these steps."
@@ -83473,7 +83786,8 @@ commands.insertparagraph = {
 				// we found a li containing only a br followed by a li containing a list as first element: merge the two li's
 				var listParent = container.nextSibling, length = container.nextSibling.childNodes.length;
 				for (var i = 0; i < length; i++) {
-					container.appendChild(listParent.childNodes[i]);
+					// we always move the first child into the container
+					container.appendChild(listParent.childNodes[0]);
 				}
 				listParent.parentNode.removeChild(listParent);
 			}
@@ -83542,15 +83856,7 @@ commands.insertparagraph = {
 		var newContainer = document.createElement(newContainerName);
 
 		// "Copy all non empty attributes of the container to new container."
-		for ( var i = 0; i < container.attributes.length; i++ ) {
-			if ( typeof newContainer.setAttributeNS === 'function' ) {
-				newContainer.setAttributeNS(container.attributes[i].namespaceURI, container.attributes[i].name, container.attributes[i].value);
-			} else if ( container.attributes[i].value.length > 0 
-						&& container.attributes[i].value != 'null'
-						&& container.attributes[i].value > 0) {
-				newContainer.setAttribute(container.attributes[i].name, container.attributes[i].value);
-			}
-		}
+		copyAttributes( container,  newContainer );
 
 		// "If new container has an id attribute, unset it."
 		newContainer.removeAttribute("id");
@@ -83609,7 +83915,8 @@ commands.insertparagraph = {
 		// "If new container has no visible children, call createElement("br")
 		// on the context object, and append the result as the last child of
 		// new container."
-		if (newContainer.offsetHeight == 0 && !$_(newContainer.childNodes).some(isVisible)) {
+		if (newContainer.offsetHeight == 0 &&
+			!$_(newContainer.childNodes).some(isVisible)) {
 			newContainer.appendChild(createEndBreak());
 		}
 
@@ -84206,6 +84513,7 @@ return {
 }
 }); // end define
 // vim: foldmarker=@{,@} foldmethod=marker
+
 /*!
 * CommandManager file is part of Aloha Editor Project http://aloha-editor.org
 * Copyright (c) 2010-2011 Gentics Software GmbH, aloha@gentics.com
@@ -84300,7 +84608,7 @@ function( Aloha, Registry, Engine, Dom, ContentHandlerManager ) {
 				range = Aloha.getSelection().getRangeAt( 0 );
 
 				// FIX: doCleanup should work with W3C range
-				var startnode = range.commonAncestorContainer.parentNode;
+				var startnode = range.commonAncestorContainer;
 				var rangeObject = new window.GENTICS.Utils.RangeObject();
 				rangeObject.startContainer = range.startContainer;
 				rangeObject.startOffset = range.startOffset;
@@ -84661,7 +84969,7 @@ function( Aloha, Selection, jQuery, console ) {
 			// return 'inherit' for nested elements of a contenteditable.
 			// The isContentEditable is a w3c standard compliant property which works in IE7,8,FF36+, Chrome 12+
 			if (typeof $el[0] === 'undefined' ) {
-				console.error('The jquery object did not contain any valid elements.');
+				console.warn('The jquery object did not contain any valid elements.'); // die silent
 				return undefined;
 			}
 			if (typeof $el[0].isContentEditable === 'undefined') {
@@ -84892,6 +85200,54 @@ function( Aloha, Selection, jQuery, console ) {
 
 	jQuery.isNumeric = function(o) {
 		return ! isNaN (o-0);
+	},
+
+	/**
+	 * check if a mixed var is empty or not
+	 * borrowed from http://phpjs.org/functions/empty:392 and a bit improved
+	 * 
+	 * @param mixed_var
+	 * @return {boolean}
+	*/
+	jQuery.isEmpty = function(mixed_var) {
+	    // http://kevin.vanzonneveld.net
+	    // +   original by: Philippe Baumann
+	    // +      input by: Onno Marsman
+	    // +   bugfixed by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+	    // +      input by: LH
+	    // +   improved by: Onno Marsman
+	    // +   improved by: Francesco
+	    // +   improved by: Marc Jansen
+	    // +   improved by: Rene Kapusta
+	    // +   input by: Stoyan Kyosev (http://www.svest.org/)
+	    // *     example 1: empty(null);
+	    // *     returns 1: true
+	    // *     example 2: empty(undefined);
+	    // *     returns 2: true
+	    // *     example 3: empty([]);
+	    // *     returns 3: true
+	    // *     example 4: empty({});
+	    // *     returns 4: true
+	    // *     example 5: empty({'aFunc' : function () { alert('humpty'); } });
+	    // *     returns 5: false
+	    var key;
+
+		if ( Array.isArray(mixed_var) || typeof mixed_var == 'string' ) {
+			return mixed_var.length === 0;
+		}
+
+	    if (mixed_var === "" || mixed_var === 0 || mixed_var === "0" || mixed_var === null || mixed_var === false || typeof mixed_var === 'undefined') {
+	        return true;
+	    }
+
+	    if (typeof mixed_var == 'object') {
+	        for (key in mixed_var) {
+	            return false;
+	        }
+	        return true;
+	    }
+
+	    return false;
 	}
 });
 
@@ -86186,7 +86542,7 @@ GENTICS.Utils.Position.addMouseMoveCallback = function (callback) {
 
 // Mousemove Hooks
 jQuery(function () {
-	setInterval(function (){
+	window.setInterval(function (){
 		GENTICS.Utils.Position.update();
 	}, 500);
 });
@@ -86443,7 +86799,7 @@ define('aloha/repositorymanager',[
 			// when querying the repository manager in the context of something
 			// like autocomplete
 			var timeout = parseInt( params.timeout, 10 ) || this.settings.timeout;
-			timer = setTimeout( function() {
+			timer = window.setTimeout( function() {
 				numOpenCallbacks = 0;
 				that.queryCallback( callback, allitems, allmetainfo, timer );
 			}, timeout );
@@ -86569,7 +86925,9 @@ define('aloha/repositorymanager',[
 						return;
 					}
 
-					jQuery.merge( allitems, items );
+					if (allitems && items) {
+						jQuery.merge( allitems, items );
+					}
 
 					if ( --numOpenCallbacks === 0 ) {
 						that.getChildrenCallback( callback, allitems, timer );
@@ -86607,7 +86965,7 @@ define('aloha/repositorymanager',[
 			}
 
 			var timeout = parseInt( params.timeout, 10 ) || this.settings.timeout;
-			timer = setTimeout( function() {
+			timer = window.setTimeout( function() {
 				numOpenCallbacks = 0;
 				that.getChildrenCallback( callback, allitems, timer );
 			}, timeout );
@@ -88204,7 +88562,7 @@ Ext.ux.AlohaAttributeField = Ext.extend( Ext.form.ComboBox, {
 			if ( ( event.keyCode == 13 || event.keyCode == 27 ) &&
 					!this.ALOHAwasExpanded ) {
 				// work around stupid behavior when moving focus
-				setTimeout( function () {
+				window.setTimeout( function () {
 					// Set focus to link element and select the object
 					Selection.getRangeObject().select();
 				}, 0 );

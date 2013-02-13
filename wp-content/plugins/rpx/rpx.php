@@ -20,13 +20,13 @@ Copyright 2011  Janrain  (email : info@janrain.com)
 Plugin Name: Janrain Engage
 Plugin URI: https://support.janrain.com/
 Description: Plugin to add authentication via the Janrain Engage service.
-Version: 1.0.9
+Version: 1.1.0
 Author: forestb
 Author URI: http://janrain.com/
 License: GPL2
 */
 define('RPX_PLUGIN_NAME',                  'Janrain Engage for Wordpress');
-define('RPX_PLUGIN_VERSION',               '1.0.9');
+define('RPX_PLUGIN_VERSION',               '1.1.0');
 
 /*catch the current setting and disable display errors for security*/
 if (ob_start()){
@@ -67,6 +67,9 @@ function rpx_activate() {
     update_option(RPX_SIGNIN_OPTION,    RPX_SIGNIN_OPTION_DEFAULT);
     update_option(RPX_WPLOGIN_OPTION,   RPX_WPLOGIN_OPTION_DEFAULT);
     update_option(RPX_NEW_WIDGET_OPTION, RPX_NEW_WIDGET_OPTION_DEFAULT);
+    update_option(RPX_NEW_SHARE_OPTION, RPX_NEW_SHARE_OPTION_DEFAULT);
+    update_option(RPX_SHARE_AUTH_OPTION, RPX_SHARE_AUTH_OPTION_DEFAULT);
+    update_option(RPX_SHARE_REG_OPTION, RPX_SHARE_REG_OPTION_DEFAULT);
   }
 }
 
@@ -99,6 +102,9 @@ function rpx_uninstall() {
   delete_option(RPX_SIGNIN_OPTION);
   delete_option(RPX_WPLOGIN_OPTION);
   delete_option(RPX_NEW_WIDGET_OPTION);
+  delete_option(RPX_NEW_SHARE_OPTION);
+  delete_option(RPX_SHARE_AUTH_OPTION);
+  delete_option(RPX_SHARE_REG_OPTION);
 }
 
 register_activation_hook(__FILE__, 'rpx_activate');

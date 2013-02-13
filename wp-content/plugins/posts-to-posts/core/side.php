@@ -2,35 +2,80 @@
 
 abstract class P2P_Side {
 
-	public $query_vars;
+	protected $item_type;
 
-	function __construct( $query_vars ) {
-		$this->query_vars = $query_vars;
+	abstract function get_object_type();
+
+	abstract function get_title();
+	abstract function get_desc();
+	abstract function get_labels();
+
+	abstract function can_edit_connections();
+	abstract function can_create_item();
+
+	abstract function get_base_qv( $q );
+	abstract function translate_qv( $qv );
+	abstract function do_query( $args );
+	abstract function capture_query( $args );
+	abstract function get_list( $query );
+
+	abstract function is_indeterminate( $side );
+
+	final function is_same_type( $side ) {
+		return $this->get_object_type() == $side->get_object_type();
 	}
 
-	function get_base_qv( $q ) {
-		return array_merge( $this->query_vars, $q );
+	/**
+	 * @param object Raw object or P2P_Item
+	 */
+	function item_recognize( $arg ) {
+		$class = $this->item_type;
+
+		if ( is_a( $arg, 'P2P_Item' ) ) {
+			if ( !is_a( $arg, $class ) ) {
+				return false;
+			}
+
+			$arg = $arg->get_object();
+		}
+
+		$raw_item = $this->recognize( $arg );
+		if ( !$raw_item )
+			return false;
+
+		return new $class( $raw_item );
 	}
+
+	/**
+	 * @param object Raw object
+	 */
+	abstract protected function recognize( $arg );
 }
 
 
 class P2P_Side_Post extends P2P_Side {
 
-	public $post_type = array();
+	protected $item_type = 'P2P_Item_Post';
 
 	function __construct( $query_vars ) {
-		parent::__construct( $query_vars );
+		$this->query_vars = $query_vars;
+	}
 
-		$this->post_type = $this->query_vars['post_type'];
+	public function get_object_type() {
+		return 'post';
+	}
+
+	public function first_post_type() {
+		return $this->query_vars['post_type'][0];
 	}
 
 	private function get_ptype() {
-		return get_post_type_object( $this->post_type[0] );
+		return get_post_type_object( $this->first_post_type() );
 	}
 
 	function get_base_qv( $q ) {
 		if ( isset( $q['post_type'] ) && 'any' != $q['post_type'] ) {
-			$common = array_intersect( $this->post_type, (array) $q['post_type'] );
+			$common = array_intersect( $this->query_vars['post_type'], (array) $q['post_type'] );
 
 			if ( !$common )
 				unset( $q['post_type'] );
@@ -43,7 +88,7 @@ class P2P_Side_Post extends P2P_Side {
 	}
 
 	function get_desc() {
-		return implode( ', ', array_map( array( $this, 'post_type_label' ), $this->post_type ) );
+		return implode( ', ', array_map( array( $this, 'post_type_label' ), $this->query_vars['post_type'] ) );
 	}
 
 	private function post_type_label( $post_type ) {
@@ -59,16 +104,23 @@ class P2P_Side_Post extends P2P_Side {
 		return $this->get_ptype()->labels;
 	}
 
-	function check_capability() {
+	function can_edit_connections() {
 		return current_user_can( $this->get_ptype()->cap->edit_posts );
 	}
 
-	function do_query( $args ) {
-		return new WP_Query( $args );
+	function can_create_item() {
+		if ( count( $this->query_vars['post_type'] ) > 1 )
+			return false;
+
+		if ( count( $this->query_vars ) > 1 )
+			return false;
+
+		return true;
 	}
 
 	function translate_qv( $qv ) {
 		$map = array(
+			'include' => 'post__in',
 			'exclude' => 'post__not_in',
 			'search' => 's',
 			'page' => 'paged',
@@ -82,43 +134,73 @@ class P2P_Side_Post extends P2P_Side {
 		return $qv;
 	}
 
-	function item_recognize( $arg ) {
-		if ( is_object( $arg ) ) {
-			if ( !isset( $arg->post_type ) )
-				return false;
-			$post_type = $arg->post_type;
-		} elseif ( $post_id = (int) $arg ) {
-			$post_type = get_post_type( $post_id );
-		} else {
-			$post_type = $arg;
-		}
+	function do_query( $args ) {
+		return new WP_Query( $args );
+	}
 
+	function capture_query( $args ) {
+		$q = new WP_Query;
+		$q->_p2p_capture = true;
+
+		$q->query( $args );
+
+		return $q->_p2p_sql;
+	}
+
+	function get_list( $wp_query ) {
+		$list = new P2P_List( $wp_query->posts, $this->item_type );
+
+		$list->current_page = max( 1, $wp_query->get('paged') );
+		$list->total_pages = $wp_query->max_num_pages;
+
+		return $list;
+	}
+
+	function is_indeterminate( $side ) {
+		$common = array_intersect(
+			$this->query_vars['post_type'],
+			$side->query_vars['post_type']
+		);
+
+		return !empty( $common );
+	}
+
+	protected function recognize( $arg ) {
+		if ( is_object( $arg ) && !isset( $arg->post_type ) )
+			return false;
+
+		$post = get_post( $arg );
+
+		if ( !is_object( $post ) )
+			return false;
+
+		if ( !$this->recognize_post_type( $post->post_type ) )
+			return false;
+
+		return $post;
+	}
+
+	public function recognize_post_type( $post_type ) {
 		if ( !post_type_exists( $post_type ) )
 			return false;
 
-		return in_array( $post_type, $this->post_type );
-	}
-
-	function item_id( $arg ) {
-		$post = get_post( $arg );
-		if ( $post )
-			return $post->ID;
-
-		return false;
-	}
-
-	function item_title( $item ) {
-		return $item->post_title;
+		return in_array( $post_type, $this->query_vars['post_type'] );
 	}
 }
 
 
 class P2P_Side_Attachment extends P2P_Side_Post {
 
-	function __construct( $query_vars ) {
-		P2P_Side::__construct( $query_vars );
+	protected $item_type = 'P2P_Item_Attachment';
 
-		$this->post_type = array( 'attachment' );
+	function __construct( $query_vars ) {
+		$this->query_vars = $query_vars;
+
+		$this->query_vars['post_type'] = array( 'attachment' );
+	}
+
+	function can_create_item() {
+		return false;
 	}
 
 	function get_base_qv( $q ) {
@@ -130,6 +212,16 @@ class P2P_Side_Attachment extends P2P_Side_Post {
 
 
 class P2P_Side_User extends P2P_Side {
+
+	protected $item_type = 'P2P_Item_User';
+
+	function __construct( $query_vars ) {
+		$this->query_vars = $query_vars;
+	}
+
+	function get_object_type() {
+		return 'user';
+	}
 
 	function get_desc() {
 		return __( 'Users', P2P_TEXTDOMAIN );
@@ -147,15 +239,18 @@ class P2P_Side_User extends P2P_Side {
 		);
 	}
 
-	function check_capability() {
+	function can_edit_connections() {
 		return current_user_can( 'list_users' );
 	}
 
-	function do_query( $args ) {
-		return new WP_User_Query( $args );
+	function can_create_item() {
+		return false;
 	}
 
 	function translate_qv( $qv ) {
+		if ( isset( $qv['p2p:include'] ) )
+			$qv['include'] = _p2p_pluck( $qv, 'p2p:include' );
+
 		if ( isset( $qv['p2p:exclude'] ) )
 			$qv['exclude'] = _p2p_pluck( $qv, 'p2p:exclude' );
 
@@ -170,23 +265,67 @@ class P2P_Side_User extends P2P_Side {
 		return $qv;
 	}
 
-	function item_recognize( $arg ) {
-		return is_a( $arg, 'WP_User' );
+	function do_query( $args ) {
+		return new WP_User_Query( $args );
 	}
 
-	function item_id( $arg ) {
-		if ( $this->item_recognize( $arg ) )
-			return $arg->ID;
+	function capture_query( $args ) {
+		$args['count_total'] = false;
 
-		$user = get_user_by( 'id', $arg );
-		if ( $user )
-			return $user->ID;
+		$uq = new WP_User_Query;
+		$uq->_p2p_capture = true; // needed by P2P_URL_Query
 
-		return false;
+		// see http://core.trac.wordpress.org/ticket/21119
+		$uq->query_vars = wp_parse_args( $args, array(
+			'blog_id' => $GLOBALS['blog_id'],
+			'role' => '',
+			'meta_key' => '',
+			'meta_value' => '',
+			'meta_compare' => '',
+			'include' => array(),
+			'exclude' => array(),
+			'search' => '',
+			'search_columns' => array(),
+			'orderby' => 'login',
+			'order' => 'ASC',
+			'offset' => '',
+			'number' => '',
+			'count_total' => true,
+			'fields' => 'all',
+			'who' => ''
+		) );
+
+		$uq->prepare_query();
+
+		return "SELECT $uq->query_fields $uq->query_from $uq->query_where $uq->query_orderby $uq->query_limit";
 	}
 
-	function item_title( $item ) {
-		return $item->display_name;
+	function get_list( $query ) {
+		$list = new P2P_List( $query->get_results(), $this->item_type );
+
+		$qv = $query->query_vars;
+
+		if ( isset( $qv['p2p:page'] ) ) {
+			$list->current_page = $qv['p2p:page'];
+			$list->total_pages = ceil( $query->get_total() / $qv['p2p:per_page'] );
+		}
+
+		return $list;
+	}
+
+	function is_indeterminate( $side ) {
+		return true;
+	}
+
+	function get_base_qv( $q ) {
+		return array_merge( $this->query_vars, $q );
+	}
+
+	protected function recognize( $arg ) {
+		if ( is_a( $arg, 'WP_User' ) )
+			return $arg;
+
+		return get_user_by( 'id', $arg );
 	}
 }
 

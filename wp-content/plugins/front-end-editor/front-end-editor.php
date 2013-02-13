@@ -1,33 +1,17 @@
 <?php
 /*
 Plugin Name: Front-end Editor
-Version: 2.2.2-alpha
+Version: 2.3
 Description: Allows you to edit your posts without going through the admin interface
 Author: scribu
 Author URI: http://scribu.net/
 Plugin URI: http://scribu.net/wordpress/front-end-editor
 Text Domain: front-end-editor
 Domain Path: /lang
-
-
-Copyright (C) 2009-2012 Cristi Burcă (mail@scribu.net)
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-define( 'FEE_VERSION', '2.2.2-alpha' );
-define( 'ALOHA_VERSION', '0.20.9' );
+define( 'FEE_VERSION', '2.3' );
+define( 'ALOHA_VERSION', '0.20.16' );
 
 define( 'FEE_MAIN_FILE', __FILE__ );
 
@@ -50,7 +34,6 @@ function _fee_init() {
 		'disabled' => array('bloginfo'),
 		'rich' => true,
 		'group_post' => false,
-		'group_post_button' => false,
 		'taxonomy_ui' => 'termselect'
 	) );
 

@@ -39,7 +39,7 @@
 			 <h2>Active threats <a class="btn pull-right" style="font-weight:normal" href="<?php bloginfo('siteurl');?>/wp-admin/post-new.php?post_type=threat">+ Add a threat</a></h2>
 			 <p></p>
   			  
-  		<?php /* ?>
+  		
 	 <table id="threats"class="table table-striped">
   			   <?php 
                 $args = array( 
@@ -74,8 +74,9 @@
                   
             <?php endforeach; ?>
           </table>
-<?php */ ?>
 
+
+<?php /*
 
 	<div class="row">
  	 <?php 
@@ -98,6 +99,9 @@
 </div>
 
         </div>	
+        
+        */ ?>
+        
         <? /*
         <div class="span6" >
     			   <h2>Links

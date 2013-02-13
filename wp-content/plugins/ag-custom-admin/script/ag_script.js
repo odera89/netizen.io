@@ -107,8 +107,7 @@ function createEditMenuPage(checkboxes,textboxes){
     });
 	 
     //console.log(checkboxes.replace('<-TOP->','')+"|"+textboxes.replace('<-TOP->',''));	  
-    prettyEditMenuPage();
-    
+    prettyEditMenuPage();   
   
 }
 
@@ -178,6 +177,85 @@ function createEditMenuPageV32(checkboxes,textboxes){
         }else{
             subs++;
         }        
+      
+    });
+}
+
+function createEditMenuPageV35(checkboxes,textboxes){		
+    /*Create menu page in AGCA settings*/	
+	//console.log(checkboxes);
+    var counter = 0;
+    var TBlength = textboxes.length;
+    if(textboxes==""){
+        TBlength = 9999999;
+    }
+	
+    var topElement="";
+    jQuery('ul#adminmenu li').each(function(){  
+        if(!jQuery(this).hasClass("wp-menu-separator") && !jQuery(this).hasClass("wp-menu-separator-last") && !jQuery(this).hasClass("ag-custom-button") && (jQuery(this).attr('id') !="collapse-menu") && (counter < TBlength )){	
+			
+                //console.log(jQuery(this).text());        
+            //if subelement
+            if(jQuery(this).parent().hasClass('wp-submenu') && !jQuery(this).hasClass('wp-submenu-head')){	
+                //console.log(jQuery(this).find('a').text());
+                var el = jQuery(this).find('a').clone();
+                el.find('span').remove();               
+                subElement = el.html();
+                //console.log(jQuery(this));
+               //console.log(subElement);
+                var isHidden = "";
+                var sub_item_text_value;
+                if(textboxes ==""){	
+                    sub_item_text_value = subElement;
+                }else{
+                    sub_item_text_value = textboxes[counter][1];
+                    isHidden = checkboxes[counter][1];					
+                }	
+                jQuery('#ag_edit_adminmenu').append("<tr><td class='ag_admin_menu_child'><div style=\"float:left\"><a tabindex=\"-1\" href=\"javascript:void(0)\" style=\"font-weight:bold;\"title=\""+topElement+" submenu: "+subElement+"\"><span style=\"font-weight:normal\">submenu: </span>"+subElement+"</a></div><div style=\"float:right\"><input type=\"checkbox\" title=\"Remove "+topElement+" submenu: "+subElement+" from menu\" class=\""+subElement+"\" "+booleanToChecked(isHidden)+"  name=\"ag_edit_adminmenu_item_sub_"+counter+"\" /></div></td><td class='ag_admin_menu_child2' ><input type=\"text\" title=\"Rename submenu item "+subElement+" with this value\" class=\""+subElement+"\" size=\"47\" value=\""+sub_item_text_value+"\" name=\"ag_edit_adminmenu_item_sub_"+counter+"\" /></td></tr>");
+                counter++;
+            }
+            //if top element
+            else if(jQuery(this).parent().attr('id') == 'adminmenu'){
+                //console.log(jQuery(this).attr('id'));
+                var el = jQuery(this).find('.wp-menu-name').clone();
+                    el.find('span').remove();		                
+                topElement = el.text();
+                //console.log(topElement);
+                var top_item_text_value;
+                var isHidden = "";
+                if(textboxes ==""){	
+                    top_item_text_value = topElement;
+                }else{
+                    top_item_text_value = textboxes[counter][1];
+                    isHidden = checkboxes[counter][1];
+                }	
+                jQuery('#ag_edit_adminmenu').append("<tr><td class='ag_admin_menu_parent'><br /><span class=\"agcaMenuEditorPlusMinus\"><span class=\"plus\">+</span><span class=\"minus\">-</span></span><a tabindex=\"0\" href=\"javascript:void(0)\" >" + topElement +"</a><div style=\"float:right\"><input title=\"Remove "+topElement+" from menu\" class=\""+jQuery(this).attr("id")+"\" type=\"checkbox\" "+booleanToChecked(isHidden)+" name=\"ag_edit_adminmenu_item_top_"+counter+"\" /></div></td><td class='ag_admin_menu_parent2' ><input title=\"Rename "+topElement+" with this value\" type=\"text\" class=\""+jQuery(this).attr("id")+"\" size=\"47\" value=\""+top_item_text_value+"\" name=\"ag_edit_adminmenu_item_top_"+counter+"\" /></td></tr>");
+                counter++;
+            }			
+            
+        }else if(jQuery(this).attr('id') =="collapse-menu"){
+            jQuery(this).remove();
+        }
+    });
+	 
+    //console.log(checkboxes.replace('<-TOP->','')+"|"+textboxes.replace('<-TOP->',''));	  
+    prettyEditMenuPage();
+    
+    var parent = null;
+    var subs = 0;
+    jQuery('#ag_edit_adminmenu tr').each(function(){
+        if(jQuery(this).find('td').hasClass('ag_admin_menu_parent')){
+            //jQuery(this).css('color','#ffffff');
+            if(parent != null){
+                if(subs == 0){
+                    jQuery(parent).find('.agcaMenuEditorPlusMinus').html('<span>&nbsp;&nbsp;&nbsp;</span>');
+                }
+            }
+            subs = 0;
+            parent = jQuery(this);
+        }else{
+            subs++;
+        }       
       
     });
 }
@@ -379,16 +457,38 @@ jQuery(document).ready(function(){
     jQuery("body").append("<div id='AGToolTipDiv'></div>");	
 	
     /*ToolTip*/
-    jQuery("label[title],#agca_donate_button").each(function() {  
-        jQuery(this).hover(function(e) { 	
-            jQuery(this).mousemove(function(e) {			
+    jQuery("label[title],#agca_donate_button, a.feedback").each(function() {  
+        jQuery(this).hover(function(e) {
+            if(jQuery(this).hasClass('feedback')){
+               jQuery(this).mousemove(function(e) {			
+                var tipY = e.pageY + 16; 
+                var tipX = e.pageX - 236;	
+                var type = '#fee6e6';
+                var border = '1px solid red';
+                if(jQuery(this).hasClass('positive')) {
+                    type = '#eafee6';
+                    border = '1px solid green';
+                }
+                jQuery("#AGToolTipDiv").css({
+                    'top': tipY, 
+                    'left': tipX,
+                    'background': type,
+                    'border': border
+                });
+            }); 
+            }else{
+                jQuery(this).mousemove(function(e) {			
                 var tipY = e.pageY + 16; 
                 var tipX = e.pageX + 16;	
                 jQuery("#AGToolTipDiv").css({
                     'top': tipY, 
-                    'left': tipX
+                    'left': tipX,
+                    'background': '#FFFFD4',
+                    'border': '1px solid #FFFF00'
                 });
-            });
+            });                
+            }
+            
             jQuery("#AGToolTipDiv")
             .html(jQuery(this).attr('title'))
             .stop(true,true)
@@ -433,6 +533,16 @@ jQuery(document).ready(function(){
             jQuery("#agca_admin_menu_submenu_round_block").show("slide");
         }else{
             jQuery("#agca_admin_menu_submenu_round_block").hide("slideDown");
+        }		
+    });
+	
+	 /*HIDE/SHOW size hyperllink on register link on login page*/
+    jQuery('input[name=agca_login_register_remove]').bind("click",function(){				
+        var checked = jQuery(this).is(":checked");
+        if(!checked){
+            jQuery("#agca_login_register_href_block").show("slide");
+        }else{
+            jQuery("#agca_login_register_href_block").hide("slideDown");
         }		
     });
 	  
@@ -522,7 +632,9 @@ function processData(){
     if(element == 1){
         array="";
     }
-    jQuery('#ag_add_adminmenu_json').val(array);		
+    jQuery('#ag_add_adminmenu_json').val(array);	
+    
+    
 		
     /*Serialize colors*/
     var array = "{";
@@ -537,6 +649,7 @@ function processData(){
         firstElement = false;			
     });
     array += "}";
+    
     if(!isSettingsImport){
         jQuery('#ag_colorizer_json').val(array);                
     }    
@@ -550,19 +663,13 @@ function updateTargetColor(id, color){
             jQuery('html, .wp-dialog').css({
                 'background-color':color
             });	           	
-            break;
-        case 'color_footer':
-            jQuery('#footer').css({
-                'background':color
-            });
-            if(wpversion >= 3.2){
-                jQuery('#footer').css({
-                    'margin':'0',
-                    'margin-left':'146px',
-                    'padding':'15px'
-                });
-            }
-            break;
+            break; 
+        case 'login_color_background':		
+            jQuery('body.login').css({
+                'background-color':color
+            });	           	
+            break;             
+            
         case 'color_header':		 
             jQuery('#wphead').css({
                 'background':color
@@ -585,23 +692,33 @@ function updateTargetColor(id, color){
             jQuery('#adminmenu a.menu-top').css({
                 'background':color
             });
+			jQuery('#adminmenu li.menu-top').css({
+                'background':color
+            });
             break;
         case 'color_admin_menu_top_button_current_background':
             jQuery('#adminmenu li.menu-top.wp-menu-open a.menu-top').css({
                 'background':color
+				
             });
             jQuery('#adminmenu li.menu-top.current a.menu-top').css({
+                'background':color
+            });
+			jQuery('body.folded #adminmenu li.menu-top.wp-menu-open').css({
                 'background':color
             });
             break;
         case 'color_admin_menu_top_button_hover_background':
             if(color == "")break;
             var selector = '#adminmenu a.menu-top';  
+			if(jQuery('body').hasClass('folded')){
+				selector = '#adminmenu li.menu-top';  
+			}
             var originalBackground = jQuery(selector).css('background-color'); 
 
             //if first is selected, use second
              if((jQuery(selector+":eq(0)").hasClass('current') || jQuery(selector+":eq(0)").hasClass('wp-has-current-submenu'))){                 
-                 originalBackground = jQuery('#adminmenu a.menu-top:eq(1)').css('background-color');              
+                 originalBackground = jQuery(selector+':eq(1)').css('background-color');              
              }         
             jQuery(selector).mouseover(function(){                
                         if(!(jQuery(this).hasClass('current') || jQuery(this).hasClass('wp-has-current-submenu'))){ 
@@ -612,7 +729,9 @@ function updateTargetColor(id, color){
                     jQuery(this).css('background',originalBackground);                
                 }                
             }); 
-
+			
+			//for folded menu
+	
            
             break;
         case 'color_admin_menu_submenu_background':
@@ -623,7 +742,8 @@ function updateTargetColor(id, color){
                     'background':color
                 });			
             });
-            jQuery('#adminmenu .wp-submenu').css({'background':color,'margin-left':'5px','padding':'0px'});
+            jQuery('#adminmenu .wp-submenu').css({'background':color,'margin-left':'0',"padding-top":roundedSidberSize+"px","padding-bottom":roundedSidberSize+"px"});
+            jQuery('#adminmenu .wp-has-current-submenu .wp-submenu').css("padding","0");
             //jQuery('#adminmenu .wp-submenu').css('border','3px solid red');
             jQuery('#adminmenu .wp-submenu ul').css({'background':'none'});
             jQuery('#adminmenu .wp-submenu ul').css('border','none');
@@ -634,10 +754,18 @@ function updateTargetColor(id, color){
             jQuery('#adminmenu .wp-submenu li a').css('color',color);	
             break;
         case 'color_admin_menu_submenu_border_top':		  
-            jQuery('#adminmenu > li > a').css('border-top-color',color);	
+			if(jQuery('body').hasClass('folded')){
+				jQuery('#adminmenu li.menu-top').css('border-top-color',color);	
+			}else{
+				jQuery('#adminmenu > li > a').css('border-top-color',color);	
+			}
             break;
         case 'color_admin_menu_submenu_border_bottom':
-            jQuery('#adminmenu > li > a').css('border-bottom-color',color);
+			if(jQuery('body').hasClass('folded')){
+				jQuery('#adminmenu li.menu-top').css('border-bottom-color',color);
+			}else{
+				jQuery('#adminmenu > li > a').css('border-bottom-color',color);
+			}            
             break;                  
         case 'color_admin_menu_font':
             jQuery('#adminmenu, #adminmenu a, #adminmenu p').css({
@@ -677,7 +805,7 @@ function updateTargetColor(id, color){
             });
             break;
         case 'color_font_footer':
-            jQuery('#footer, #footer a').css({
+            jQuery('#wpfooter, #wpfooter a').css({
                 'color':color
             });
             break;
@@ -692,7 +820,7 @@ function updateTargetColor(id, color){
             //jQuery(".widget, #widget-list .widget-top, .postbox, .menu-item-settings").css('background',color); remove if <3.2 work
             break;		 
         default:	
-    }	
+    }		
 }
 function updateColor(id,color){
     jQuery("#"+id).css({
@@ -888,7 +1016,12 @@ function isWPHigherOrEqualThan(targetVersion){
     "3.4",
     "3.4.1",
     "3.4.2",
-    "3.5"];
+    "3.5",
+    "3.5.1",
+    "3.5.2",
+    "3.5.3",
+    "3.5.4",
+    "3.6"];
     //remove sufixes, beta RC etc
     if (wpversion.indexOf("-")!=-1){
         var parts = wpversion.split("-");

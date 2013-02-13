@@ -1,34 +1,53 @@
 <?php
 // Template Name: FEE Debug
 
+add_action( 'wp_head', function() { ?>
+<style>
+#fee-option-test {
+	border: 1px solid gray;
+	padding: 5px;
+}
+</style>
+<?php });
+
 get_header();
 
-function fee_test_input_types() {
-	echo '<strong>Input post meta:</strong><br>';
-	echo html( 'div', editable_post_meta(get_the_ID(), 'price', 'input', false ) );
+fee_inject_dummy_post();
 
-	echo '<strong>Rich post meta:</strong><br>';
-	echo wpautop( editable_post_meta(get_the_ID(), 'degrees', 'rich', false ) );
+the_post();
+?>
+		<div id="primary">
+			<div id="content" role="main">
 
-	echo '<strong>Dropdown post meta:</strong><br>';
-	echo html( 'div', editable_post_meta( get_the_ID(), 'my_key', array(
-		'type' => 'select',
-		'values' => array(
-			'val_1' => 'Title 1',
-			'val_2' => 'Title 2'
-		),
-		false
-	) ) );
+				<?php get_template_part( 'content', 'page' ); ?>
 
-	echo '<strong>Input option:</strong><br>';
-	echo html( 'div', editable_option( array(
+<strong>Input post meta:</strong><br>
+<div><?php editable_post_meta(get_the_ID(), 'price', 'input' ); ?></div>
+
+<strong>Rich post meta:</strong><br>
+<?php echo wpautop( editable_post_meta(get_the_ID(), 'degrees', 'rich', false ) ); ?>
+
+<strong>Dropdown post meta:</strong><br>
+<div><?php editable_post_meta( get_the_ID(), 'my_key', array(
+	'type' => 'select',
+	'values' => array(
+		'val_1' => 'Title 1',
+		'val_2' => 'Title 2'
+	)
+) );
+?></div>
+
+<div id="fee-option-test" class="fee-group">
+	<div class="fee-buttons"></div>
+
+	<strong>Input option:</strong><br>
+	<div><?php editable_option( array(
 		'key' => 'price',
 		'type' => 'input',
-		'echo' => false
-	) ) );
+	) ); ?></div>
 
-	echo '<strong>Dropdown option:</strong><br>';
-	echo html( 'div', editable_option( array(
+	<strong>Dropdown option:</strong><br>
+	<div><?php editable_option( array(
 		'key' => 'country',
 		'type' => 'select',
 		'values' => array(
@@ -36,35 +55,23 @@ function fee_test_input_types() {
 			'it' => 'Italy',
 			'ch' => 'China',
 		),
-		'echo' => false
-	) ) );
+	) ); ?></div>
+</div>
 
-	echo '<strong>Post excerpt:</strong><br>';
-	the_excerpt();
+<strong>Post excerpt:</strong><br>
+<?php the_excerpt(); ?>
 
-	echo '<div style="overflow:hidden">';
-	echo '<strong>Editable image:</strong><br>';
-	editable_image( 'test', 'http://wp.dev/wp-content/themes/twentyeleven/images/headers/wheel-thumbnail.jpg' );
-	echo '</div>';
+<div style="overflow:hidden">
+<strong>Editable image:</strong><br>
+<?php editable_image( 'test', 'http://wp.dev/wp-content/themes/twentyeleven/images/headers/wheel-thumbnail.jpg' ); ?>
+</div>
 
-	if ( function_exists( 'get_the_post_thumbnail' ) ) {
-		echo '<strong>Post thumbnail:</strong><br>';
-		echo get_the_post_thumbnail( get_the_ID() );
-	}
+<?php
+if ( function_exists( 'get_the_post_thumbnail' ) ) {
+	echo '<strong>Post thumbnail:</strong><br>';
+	echo get_the_post_thumbnail( get_queried_object_id() );
 }
-
-fee_inject_dummy_post();
 ?>
-		<div id="primary">
-			<div id="content" role="main">
-
-				<?php while ( have_posts() ) : the_post(); ?>
-
-					<?php get_template_part( 'content', 'page' ); ?>
-
-					<?php fee_test_input_types(); ?>
-
-				<?php endwhile; // end of the loop. ?>
 
 			</div><!-- #content -->
 		</div><!-- #primary -->

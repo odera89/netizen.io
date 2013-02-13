@@ -1,5 +1,6 @@
 <?php
 require_once(WPCF_EMBEDDED_ABSPATH . '/common/visual-editor/editor-addon.class.php');
+require_once WPCF_EMBEDDED_ABSPATH . '/includes/post-relationship.php';
 
 if (defined('DOING_AJAX')) {
     require_once WPCF_EMBEDDED_INC_ABSPATH . '/ajax.php';
@@ -126,6 +127,144 @@ function wpcf_form($id, $form = array()) {
 }
 
 /**
+ * Add submit button, cancel button and help link to the popup.
+ *
+ */
+
+function wpcf_form_popup_helper($form, $submit_text = '', $cancel_text = '', $help = array()) {
+    if ($submit_text) {
+        $form['submit'] = array(
+            '#type' => 'submit',
+            '#name' => 'submit',
+            '#value' => $submit_text,
+            '#attributes' => array('class' => 'button-primary'),
+        );
+    }
+    if ($cancel_text) {
+        $form['cancel'] = array(
+            '#type' => 'button',
+            '#name' => 'cancel',
+            '#value' => $cancel_text,
+            '#attributes' => array('class' => 'button-secondary',
+                                   'onclick' => 'window.parent.jQuery(\'#TB_closeWindowButton\').click();return true;'),
+            '#before' => ' ',
+        );
+    }
+    if ($help) {
+        $form = array_reverse($form, true);
+        $form['help'] = array(
+            '#type' => 'markup',
+            '#markup' => '<p style="float:right;"><a class="wpcf-help-link" href="' . $help['url'] . '" target="_blank">' . $help['text'] . '</a></p>',
+        );
+        $form = array_reverse($form, true);
+    }
+    
+    return $form;
+}
+
+/**
+ * Add optional items to the popup.
+ *
+ */
+
+function wpcf_form_popup_add_optional($form) {
+    
+    $onclick = 'if (jQuery(\'#wpcf-popup-optionals\').is(\':visible\')) {
+                        jQuery(this).html(\'' . __('Advanced', 'wpcf') . ' &raquo;\');
+                        jQuery(\'#wpcf-popup-optionals\').hide();
+                    } else {
+                        jQuery(this).html(\'&laquo; ' . __('Hide advanced', 'wpcf') . '\');
+                        jQuery(\'#wpcf-popup-optionals\').show();
+                    }
+                        ';
+
+    $form['optional-start'] = array(
+        '#type' => 'markup',
+        '#markup' => '<a href="#" onclick="' . $onclick . '">' . __('Advanced', 'wpcf') . ' &raquo;</a><br /><div id="wpcf-popup-optionals" style="margin-left:20px;display:none">',
+        );
+
+    $form['show_name'] = array(
+        '#type' => 'checkbox',
+        '#title' => __('Show the field name before the value', 'wpcf'),
+        '#name' => 'show_name',
+        '#inline' => true,
+        '#after' => '<br />',
+        '#before' => '<br />',
+        );
+    
+    $form['raw_mode'] = array(
+        '#type' => 'checkbox',
+        '#title' => __('Raw mode - Outputs exactly what is saved in the database', 'wpcf'),
+        '#default_value' => '',
+        '#name' => 'raw_mode',
+        '#inline' => true,
+        '#after' => '<br />',
+        );
+    
+    $form['html_mode'] = array(
+        '#type' => 'checkbox',
+        '#title' => __('Wrap output in a div', 'wpcf'),
+        '#default_value' => '',
+        '#name' => 'html_mode',
+        '#inline' => true,
+        '#after' => '<br />',
+        );
+    
+    $form['css'] = array(
+        '#type' => 'textfield',
+        '#title' => '<td style="text-align:right;">' . __('CSS class:', 'wpcf') . '</td><td>',
+        '#name' => 'css',
+        '#value' => '',
+        '#before' => '<br /><table><tr>',
+        '#after' => '</td></tr>',
+    );
+    $form['style'] = array(
+        '#type' => 'textfield',
+        '#title' => '<td style="text-align:right;">' . __('CSS style:', 'wpcf') . '</td><td>',
+        '#name' => 'style',
+        '#value' => '',
+        '#before' => '<tr>',
+        '#after' => '</tr></table>'
+    );
+    $form['optional-end'] = array(
+        '#type' => 'markup',
+        '#markup' => '</div>',
+    );
+
+
+    return $form;    
+}
+
+/**
+ * Add the optional values from the popup to the shortcode.
+ *
+ */
+
+function wpcf_fields_add_optionals_to_shortcode($shortcode) {
+
+    if (isset($_POST['css']) && $_POST['css'] != '') {
+        $shortcode = preg_replace('/\[types([^\]]*)/', '$0 class="' . $_POST['css'] . '"', $shortcode);
+    }
+    if (isset($_POST['style']) && $_POST['style'] != '') {
+        $shortcode = preg_replace('/\[types([^\]]*)/', '$0 style="' . $_POST['style'] . '"', $shortcode);
+    }
+
+    if (isset($_POST['show_name']) && $_POST['show_name'] == '1') {
+        $shortcode = preg_replace('/\[types([^\]]*)/', '$0 show_name="true"', $shortcode);
+    }
+    
+
+    if (isset($_POST['raw_mode']) && $_POST['raw_mode'] == '1') {
+        $shortcode = preg_replace('/\[types([^\]]*)/', '$0 raw="true"', $shortcode);
+    }
+    
+    if (isset($_POST['html_mode']) && $_POST['html_mode'] == '1') {
+        $shortcode = preg_replace('/\[types([^\]]*)/', '$0 output="html"', $shortcode);
+    }
+    
+    return $shortcode;
+}
+/**
  * Renders form elements.
  * 
  * @staticvar string $form
@@ -217,7 +356,7 @@ function wpcf_form_render_js_validation($form = '.wpcf-form-validate',
             continue;
         }
         if (in_array($element['#type'], array('radios'))) {
-            $output .= 'jQuery(\'input:[name="' . $element['#name'] . '"]\').rules("add", {' . "\r\n";
+            $output .= 'jQuery(\'input[name="' . $element['#name'] . '"]\').rules("add", {' . "\r\n";
         } else {
             $output .= 'jQuery("#' . $id . '").rules("add", {' . "\r\n";
         }
@@ -231,10 +370,6 @@ function wpcf_form_render_js_validation($form = '.wpcf-form-validate',
             if (empty($args['message'])) {
                 $args['message'] = wpcf_admin_validation_messages($method);
             }
-            // TODO Why is this here?
-//            if (!empty($args['message'])) {
-//                $messages[] = $method . ': "' . wpcf_translate('field ' . $element['wpcf-id'] . ' validation message ' . $method, $args['message']) . '"';
-//            }
         }
         $output .= implode(',' . "\r\n", $rules);
         if (!empty($messages)) {
@@ -314,8 +449,8 @@ function wpcf_admin_validation_messages($method = false) {
 function wpcf_admin_message($message, $class = 'updated') {
     add_action('admin_notices',
             create_function('$a=1, $class=\'' . $class . '\', $message=\''
-                    . $message . '\'',
-                    '$screen = get_current_screen(); if (!$screen->is_network) echo "<div class=\"message $class\"><p>$message</p></div>";'));
+                    . htmlentities($message, ENT_QUOTES) . '\'',
+                    '$screen = get_current_screen(); if (!$screen->is_network) echo "<div class=\"message $class\"><p>" . html_entity_decode($message, ENT_QUOTES) . "</p></div>";'));
 }
 
 /**
@@ -324,11 +459,17 @@ function wpcf_admin_message($message, $class = 'updated') {
 function wpcf_show_admin_messages() {
     $messages = get_option('wpcf-messages', array());
     $messages_for_user = isset($messages[get_current_user_id()]) ? $messages[get_current_user_id()] : array();
+    $dismissed = get_option('wpcf_dismissed_messages', array());
     if (!empty($messages_for_user)) {
-        foreach ($messages_for_user as $message) {
-            wpcf_admin_message($message['message'], $message['class']);
+        foreach ($messages_for_user as $message_id => $message) {
+            if (!in_array($message['keep_id'], $dismissed)) {
+                wpcf_admin_message($message['message'], $message['class']);
+            }
+            if (empty($message['keep_id'])
+                    || in_array($message['keep_id'], $dismissed)) {
+                unset($messages[get_current_user_id()][$message_id]);
+            }
         }
-        unset($messages[get_current_user_id()]);
     }
     update_option('wpcf-messages', $messages);
 }
@@ -340,13 +481,66 @@ function wpcf_show_admin_messages() {
  * @param type $class
  * @return type 
  */
-function wpcf_admin_message_store($message, $class = 'updated') {
+function wpcf_admin_message_store($message, $class = 'updated', $keep_id = false) {
     $messages = get_option('wpcf-messages', array());
     $messages[get_current_user_id()][md5($message)] = array(
         'message' => $message,
-        'class' => $class
+        'class' => $class,
+        'keep_id' => $keep_id ? $keep_id : false,
     );
     update_option('wpcf-messages', $messages);
+}
+
+/**
+ * Admin notice with dismiss button.
+ * 
+ * @param type $ID
+ * @param string $message
+ * @param type $store
+ * @return boolean 
+ */
+function wpcf_admin_message_dismiss($ID, $message, $store = true) {
+    $dismissed = get_option('wpcf_dismissed_messages', array());
+    if (in_array($ID, $dismissed)) {
+        return false;
+    }
+    $message = $message . '<div style="float:right; margin:-15px 0 0 15px;"><a onclick="jQuery(this).parent().parent().fadeOut();jQuery.get(\''
+            . admin_url('admin-ajax.php?action=wpcf_ajax&amp;wpcf_action=dismiss_message&amp;id='
+                    . $ID . '&amp;_wpnonce=' . wp_create_nonce('dismiss_message')) . '\');return false;"'
+            . 'class="button-secondary" href="javascript:void(0);">'
+            . __('Dismiss', 'wpcf') . '</a></div>';
+    if ($store) {
+        wpcf_admin_message_store($message, 'updated', $ID);
+    } else {
+        wpcf_admin_message($message);
+    }
+}
+
+/**
+ * Adds dismissed message to record.
+ * 
+ * @param type $ID 
+ */
+function wpcf_admin_message_set_dismissed($ID) {
+    $messages = get_option('wpcf_dismissed_messages', array());
+    if (!in_array($ID, $messages)) {
+        $messages[] = $ID;
+        update_option('wpcf_dismissed_messages', $messages);
+    }
+}
+
+/**
+ * Removes dismissed message from record.
+ * 
+ * @param type $ID 
+ */
+function wpcf_admin_message_restore_dismissed($ID) {
+    $messages = get_option('wpcf_dismissed_messages', array());
+    $key = array_search($ID, $messages);
+    if ($key !== false) {
+        unset($messages[$key]);
+        update_option('wpcf_dismissed_messages', $messages);
+    }
 }
 
 /**
@@ -461,12 +655,11 @@ function wpcf_admin_ajax_head($title) {
             wp_admin_css();
             wp_admin_css('colors');
             wp_admin_css('ie');
-            do_action('admin_enqueue_scripts', $hook_suffix);
+//            do_action('admin_enqueue_scripts', $hook_suffix);
             do_action("admin_print_styles-$hook_suffix");
             do_action('admin_print_styles');
-            do_action("admin_print_scripts-$hook_suffix");
+//            do_action("admin_print_scripts-$hook_suffix");
             do_action('admin_print_scripts');
-            // TODO Check if needed
 //            do_action("admin_head-$hook_suffix");
 //            do_action('admin_head');
             do_action('admin_head_wpcf_ajax');
@@ -475,6 +668,21 @@ function wpcf_admin_ajax_head($title) {
             <style type="text/css">
                 html { height: auto; }
             </style>
+        
+            <script type="text/javascript">
+                // <![CDATA[
+                jQuery(document).ready(function(){
+                    // Position the help link in the title bar.
+                    var title = jQuery('#TB_closeAjaxWindow', window.parent.document);
+                    if (title.length != 0) {
+                        title.after(jQuery('.wpcf-help-link'));
+                    }
+                });
+                // ]]>
+            </script>
+        
+            <link rel="stylesheet" href="<?php echo WPCF_EMBEDDED_RES_RELPATH . '/css/basic.css'; ?>" type="text/css" media="all" />
+            
         </head>
         <body style="padding: 20px;">
             <?php
@@ -527,7 +735,7 @@ function wpcf_admin_get_var_from_referer($var) {
 function wpcf_admin_add_js_settings($id, $setting = '') {
     static $settings = array();
     $settings['wpcf_nonce_ajax_callback'] = '\'' . wp_create_nonce('execute') . '\'';
-    $settings['wpcf_cookiedomain'] = '\'' . $_SERVER['SERVER_NAME'] . '\'';
+    $settings['wpcf_cookiedomain'] = '\'' . COOKIE_DOMAIN . '\'';
     $settings['wpcf_cookiepath'] = '\'' . COOKIEPATH . '\'';
     if ($id == 'get') {
         $temp = $settings;
@@ -655,10 +863,10 @@ function wpcf_admin_bulk_string_translation() {
     // Register groups
     $groups = wpcf_admin_fields_get_groups();
     foreach ($groups as $group_id => $group) {
-        icl_register_string('plugin Types', 'group ' . $group_id . ' name',
-                $group['name']);
+        wpcf_translate_register_string('plugin Types',
+                'group ' . $group_id . ' name', $group['name']);
         if (isset($group['description'])) {
-            icl_register_string('plugin Types',
+            wpcf_translate_register_string('plugin Types',
                     'group ' . $group_id . ' description', $group['description']);
         }
     }
@@ -666,10 +874,10 @@ function wpcf_admin_bulk_string_translation() {
     // Register fields
     $fields = wpcf_admin_fields_get_fields();
     foreach ($fields as $field_id => $field) {
-        icl_register_string('plugin Types', 'field ' . $field_id . ' name',
-                $field['name']);
+        wpcf_translate_register_string('plugin Types',
+                'field ' . $field_id . ' name', $field['name']);
         if (isset($field['description'])) {
-            icl_register_string('plugin Types',
+            wpcf_translate_register_string('plugin Types',
                     'field ' . $field_id . ' description', $field['description']);
         }
 
@@ -679,14 +887,18 @@ function wpcf_admin_bulk_string_translation() {
                 if ($name == 'default') {
                     continue;
                 }
-                icl_register_string('plugin Types',
-                        'field ' . $field_id . ' option ' . $name . ' title',
-                        $option['title']);
-                icl_register_string('plugin Types',
-                        'field ' . $field_id . ' option ' . $name . ' value',
-                        $option['value']);
+                if (isset($option['title'])) {
+                    wpcf_translate_register_string('plugin Types',
+                            'field ' . $field_id . ' option ' . $name . ' title',
+                            $option['title']);
+                }
+                if (isset($option['value'])) {
+                    wpcf_translate_register_string('plugin Types',
+                            'field ' . $field_id . ' option ' . $name . ' value',
+                            $option['value']);
+                }
                 if (isset($option['display_value'])) {
-                    icl_register_string('plugin Types',
+                    wpcf_translate_register_string('plugin Types',
                             'field ' . $field_id . ' option ' . $name . ' display value',
                             $option['display_value']);
                 }
@@ -695,21 +907,21 @@ function wpcf_admin_bulk_string_translation() {
 
         if ($field['type'] == 'checkbox' && (isset($field['set_value']) && $field['set_value'] != '1')) {
             // we need to translate the check box value to store
-            icl_register_string('plugin Types',
+            wpcf_translate_register_string('plugin Types',
                     'field ' . $field_id . ' checkbox value',
                     $field['set_value']);
         }
 
         if ($field['type'] == 'checkbox' && !empty($field['display_value_selected'])) {
             // we need to translate the check box value to store
-            icl_register_string('plugin Types',
+            wpcf_translate_register_string('plugin Types',
                     'field ' . $field_id . ' checkbox value selected',
                     $field['display_value_selected']);
         }
 
         if ($field['type'] == 'checkbox' && !empty($field['display_value_not_selected'])) {
             // we need to translate the check box value to store
-            icl_register_string('plugin Types',
+            wpcf_translate_register_string('plugin Types',
                     'field ' . $field_id . ' checkbox value not selected',
                     $field['display_value_not_selected']);
         }
@@ -721,7 +933,7 @@ function wpcf_admin_bulk_string_translation() {
                     // Skip if it's same as default
                     $default_message = wpcf_admin_validation_messages($method);
                     if ($validation['message'] != $default_message) {
-                        icl_register_string('plugin Types',
+                        wpcf_translate_register_string('plugin Types',
                                 'field ' . $field_id . ' validation message ' . $method,
                                 $validation['message']);
                     }

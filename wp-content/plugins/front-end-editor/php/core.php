@@ -6,7 +6,6 @@ abstract class FEE_Core {
 	static $options;
 
 	private static $fields;
-	private static $active_fields;
 	private static $instances = array();
 
 	private static $plugin_url;
@@ -34,6 +33,7 @@ abstract class FEE_Core {
 	static function scripts() {
 		$wrapped = array_keys( FEE_Field_Base::get_wrapped() );
 
+		// No point loading all that JavaScript if there aren't any editable elements
 		if ( empty( $wrapped ) ) {
 			return;
 		}
@@ -44,10 +44,8 @@ abstract class FEE_Core {
 			'save_text' => __( 'Save', 'front-end-editor' ),
 			'cancel_text' => __( 'Cancel', 'front-end-editor' ),
 
-			'add_buttons' => current_theme_supports( 'fee-automatic-buttons' ),
-
 			'spinner' => admin_url( 'images/loading.gif' ),
-			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'ajax_url' => self::get_ajax_url(),
 			'nonce' => wp_create_nonce( self::NONCE ),
 		);
 
@@ -87,17 +85,13 @@ abstract class FEE_Core {
 				$file = basename( $file );
 				self::register_script( "fee-fields-$file", "js/fields/$file", array( 'fee-core' ) );
 			}
-
-			$css_path = 'css/core.css';
 		} else {
 			$min = defined('SCRIPT_DEBUG') ? '' : '.min';
 			self::register_script( 'fee-editor', "build/editor$min.js" );
-
-			$css_path = 'build/editor.css';
 		}
 
 		// Core style
-		wp_register_style( 'fee-editor', plugins_url( $css_path, FEE_MAIN_FILE ), $css_dependencies, FEE_VERSION );
+		wp_register_style( 'fee-editor', plugins_url( 'css/core.css', FEE_MAIN_FILE ), $css_dependencies, FEE_VERSION );
 		scbUtil::do_styles( 'fee-editor' );
 
 ?>
@@ -115,7 +109,7 @@ Aloha.settings = {
 		fee: '../../../aloha-plugins'
 	},
 	floatingmenu: {
-		width: 475
+		width: 410
 	},
 	sidebar: {
 		disabled: true
@@ -137,10 +131,8 @@ Aloha.settings = {
 		'common/undo',
 		'common/paste',
 		'common/block',
-		'common/highlighteditables',
 		'extra/cite',
 		'fee/wpImage',
-		'fee/wpSaveCancel',
 	);
 
 	echo html( 'script', array(
@@ -152,6 +144,10 @@ Aloha.settings = {
 		scbUtil::do_scripts( self::$js_dependencies );
 
 		do_action( 'front_end_editor_loaded', $wrapped );
+	}
+
+	private static function get_ajax_url() {
+		return admin_url( 'admin-ajax.php', 'relative' );
 	}
 
 	private static function register_script( $handle, $src, $dependencies = array() ) {
@@ -196,24 +192,24 @@ Aloha.settings = {
 	private static function make_instances() {
 		$disabled = (array) self::$options->disabled;
 
-		self::$active_fields = array();
+		$active_fields = array();
 
 		foreach ( self::get_fields() as $filter => $args ) {
 			if ( in_array( $filter, $disabled ) )
 				continue;
 
-			self::$active_fields[ $filter ] = $args;
+			$active_fields[ $filter ] = $args;
 
 			extract( $args );
 
 			self::$instances[ $filter ] = new $class( $filter, $type );
 		}
+
+		return $active_fields;
 	}
 
 	static function add_filters() {
-		self::make_instances();
-
-		foreach ( self::$active_fields as $filter => $args ) {
+		foreach ( self::make_instances() as $filter => $args ) {
 			extract( $args );
 
 			if ( empty( $title ) )

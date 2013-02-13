@@ -1,3 +1,7 @@
+#janrain-share {
+  z-index:10000 !important;
+}
+
 div.rpxprofile {
   width: 300px;
   border: 1px solid #DDD;
@@ -40,7 +44,7 @@ table.rpxvert {width:100%; height:100%;}
 
 .rpxvert .rpxvrow .rpxvcol {vertical-align:middle;}
 
-span.rpxborder {
+div.rpxborder {
   display:block;
   width:370px; height:240px;
   margin-right:auto; margin-left:auto;

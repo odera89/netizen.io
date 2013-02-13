@@ -31,6 +31,10 @@ table#threats td {
   vertical-align: middle;
 }
 
+.rpx_user_icon {
+	width: 50px; 
+	}
+
 
 /* micro clearfix: http://nicolasgallagher.com/micro-clearfix-hack/ */
 /* For modern browsers */

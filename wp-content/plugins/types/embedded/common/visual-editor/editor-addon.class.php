@@ -1,4 +1,5 @@
 <?php
+
 if (!class_exists('Editor_addon')) {
 
     if (!defined('ICL_COMMON_FUNCTIONS')) {
@@ -15,17 +16,6 @@ if (!class_exists('Editor_addon')) {
         global $pagenow;
 
         if ($pagenow == 'post.php' || $pagenow == 'post-new.php') {
-            //@todo REMOVE code and associated files
-//            wp_enqueue_script('editor_addon_menu_mousewheel',
-//                    EDITOR_ADDON_RELPATH . '/res/js/mousewheel.js',
-//                    array('jquery'));
-//            wp_enqueue_script('editor_addon_menu_mousewheelintent',
-//                    EDITOR_ADDON_RELPATH . '/res/js/mwheelIntent.js',
-//                    array('editor_addon_menu_mousewheel'));
-//            wp_enqueue_script('editor_addon_menu_scrollbar',
-//                    EDITOR_ADDON_RELPATH . '/res/js/scrollbar.js',
-//                    array('editor_addon_menu_mousewheelintent'));
-            
             wp_enqueue_style('editor_addon_menu',
                     EDITOR_ADDON_RELPATH . '/res/css/pro_dropdown_2.css');
             wp_enqueue_style('editor_addon_menu_scroll',
@@ -56,7 +46,7 @@ if (!class_exists('Editor_addon')) {
                 //Adding "embed form" button
                 // WP 3.3 changes
                 global $wp_version;
-                if (version_compare($wp_version, '3.2.1', '>')) {
+                if (version_compare($wp_version, '3.1.4', '>')) {
                     add_action('media_buttons', array($this, 'add_form_button'),
                             10, 2);
                 } else {
@@ -99,10 +89,10 @@ if (!class_exists('Editor_addon')) {
          * @param string $text_area
          * @param boolean $standard_v is this a standard V button
          */
-        function add_form_button($context, $text_area = 'textarea#content', $standard_v = TRUE) {
+        function add_form_button($context, $text_area = 'textarea#content', $standard_v = true, $add_views = false) {
             global $wp_version;
             // WP 3.3 changes ($context arg is actually a editor ID now)
-            if (version_compare($wp_version, '3.2.1', '>') && !empty($context)) {
+            if (version_compare($wp_version, '3.1.4', '>') && !empty($context)) {
                 $text_area = $context;
             }
             
@@ -137,12 +127,19 @@ if (!class_exists('Editor_addon')) {
 
             // add View Template links to the "Add Field" button
             if(!$standard_v) {
-            	$this->add_view_templates(&$menus);
+            	$this->add_view_type($menus, 'view-template', __('View templates', 'wpv-views'));
+                $this->add_view_type($menus, 'view', __('Post View', 'wpv-views'));
+                $this->add_view_type($menus, 'view', __('Taxonomy View', 'wpv-views'));
 			}
+
+            if ($standard_v && $add_views) {
+                $this->add_view_type($menus, 'view', __('Post View', 'wpv-views'));
+                $this->add_view_type($menus, 'view', __('Taxonomy View', 'wpv-views'));
+            }
 
             // Sort menus
             if(is_array($menus)) {
-            	$this->sort_menus_alphabetically(&$menus);
+            	$menus = $this->sort_menus_alphabetically($menus);
             }
             
             
@@ -174,7 +171,7 @@ if (!class_exists('Editor_addon')) {
                     . '</div></li></ul></li></ul>';
 
             // WP 3.3 changes
-            if (version_compare($wp_version, '3.2.1', '>')) {
+            if (version_compare($wp_version, '3.1.4', '>')) {
                 echo apply_filters('wpv_add_media_buttons', $out);
             } else {
                 return apply_filters('wpv_add_media_buttons', $context . $out);
@@ -189,6 +186,8 @@ if (!class_exists('Editor_addon')) {
          * @return string media menu
          */
         function _output_media_menu($menu, $text_area, $standard_v) {
+            $all_post_types = implode(' ', get_post_types(array('public' => true)));
+
             $out = '';
             if (is_array($menu)) {
                 foreach ($menu as $key => $menu_item) {
@@ -196,20 +195,29 @@ if (!class_exists('Editor_addon')) {
                     	if(!isset($menu_item[3])) { break; }
                         if ($menu_item[3] != '') {
                         	if(!($key == 'css')) { // hide unnecessary elements from the V popup
-                        		if(!$standard_v && (strpos($menu_item[3], 'wpcfFieldsEditorCallback') !== false || (strpos($menu_item[3], 'wpcfFieldsEmailEditorCallback') !== false))) {
+                        		if(!$standard_v && (strpos($menu_item[3], 'wpcfFieldsEditorCallback') !== false ||
+                                                    strpos($menu_item[3], 'wpcfFieldsEmailEditorCallback') !== false ||
+                                                    strpos($menu_item[3], 'wpv_insert_view_form_popup') !== false)) {
                         			$out .= $this->wpv_parse_menu_item_from_addfield($menu_item);
                         		} else {
-                            		$out .= '<a href="javascript:void(0);" class="item" onclick="' . $menu_item[3] . '">' . $menu_item[0] . "</a>\n";
+                            		$out .= '<a href="javascript:void(0);" class="item" onclick="' . $menu_item[3] . '; return false;">' . $menu_item[0] . "</a>\n";
                         		}
                         	}
                         } else {
-                            $short_code = '[' . $menu_item[1] . ']';
-                            $short_code = base64_encode($short_code);
-//                             echo "<pre>";
-//                             var_dump($menu);
-//                             echo "</pre>"; 
                             if($standard_v) {
-                            	$out .= '<a href="#" class="item" onclick="insert_b64_shortcode_to_editor(\'' . $short_code . '\', \'' . $text_area . '\')">' . $menu_item[0] . "</a>\n";
+                                $short_code = $menu_item[1];
+                                $link_text = $menu_item[0];
+
+                                if ($menu_item[2] == __('Post View', 'wpv-views') || $menu_item[2] == __('Taxonomy View', 'wpv-views')) {
+                                    $short_code = 'wpv-view name="' . $short_code . '"';
+                                    $link_text = str_replace(' - ' . __('Post View'), '', $link_text);
+                                    $link_text = str_replace(' - ' . __('Taxonomy View'), '', $link_text);
+                                    
+                                }
+                                $short_code = '[' . $short_code . ']';
+                                $short_code = base64_encode($short_code);
+                                
+                            	$out .= '<a href="#" class="item" onclick="insert_b64_shortcode_to_editor(\'' . $short_code . '\', \'' . $text_area . '\'); return false;">' . $link_text . "</a>\n";
                             } else {
                             	$out .= $this->wpv_parse_menu_item_from_addfield($menu_item);
                             }
@@ -217,8 +225,8 @@ if (!class_exists('Editor_addon')) {
                     } else {
                         // a sum menu.
                         $css_classes = isset($menu_item['css']) ? $menu_item['css'] : '';
-                        if($key == __('Taxonomy', 'wpv-views')) {
-                        	$css_classes = 'taxonomy';
+                        if($key == __('Taxonomy', 'wpv-views') || $key == __('Basic', 'wpv-views')) {
+                        	$css_classes = $all_post_types;
                         }
                         $this->_media_menu_direct_links[] = '<a href="#" class="editor-addon-top-link" id="editor-addon-link-' . md5($key) . '">' . $key . ' </a>';
                         $out .= '<div class="group '. $css_classes .'"><div class="group-title" id="editor-addon-link-' . md5($key) . '-target">' . $key . "&nbsp;&nbsp;\n</div>\n";
@@ -247,17 +255,22 @@ if (!class_exists('Editor_addon')) {
         		$slug = $menuitem_parts[0];
         	}
         	// find types fields
+        	else if((strpos($menu_item[3], 'wpcfFieldsEditorCallback') !== false)
+        				|| (strpos($menu_item[3], 'wpcfFieldsEmailEditorCallback') !== false)
+                        || (strpos($menu_item[3], 'wpv_insert_view_form_popup') !== false)) {
+                return '<a href="javascript:void(0);" class="item" onclick="on_add_field_wpv_types_callback(\'' . esc_js($menu_item[3]) . '\', \'' . esc_js($menu_item[0]) . '\'); return false;">' . $menu_item[0] . "</a>\n";
+        	} 
         	else if((preg_match('/types field="(.+)"/', $slug, $matches) > 0)
-        				|| (preg_match('/type="(.+)"/', $slug, $matches) > 0) 
-        				|| (strpos($slug, 'wpcfFieldsEditorCallback') !== false)
-        				|| (strpos($slug, 'wpcfFieldsEmailEditorCallback') !== false)) {
+        				|| (preg_match('/type="(.+)"/', $slug, $matches) > 0)) {
         		$types_slug = $matches[1];
+                $types_slug = str_replace('" class="" style="', '', $types_slug);
         		// convert Types fields to Views fields
         		$slug = $types_slug;
         		$param1 = 'Types-!-wpcf';
         	} 
         	else if(preg_match('/type="(.+)"/', $slug, $matches) > 0) {
         		$types_slug = $matches[1];
+                $types_slug = str_replace('" class="" style="', '', $types_slug);
         		// convert field to Views field
         		$slug = $types_slug;
         		$param1 = 'Types-!-wpcf';
@@ -272,6 +285,9 @@ if (!class_exists('Editor_addon')) {
         	// View Templates here
         	if($menu_item[2] == __('View templates', 'wpv-views')) {
         		$param1 = 'View template';
+        	}
+        	if($menu_item[2] == __('Post View', 'wpv-views') || $menu_item[2] == __('Taxonomy View', 'wpv-views')) {
+        		$param1 = 'Child View';
         	}
         	if(strpos($slug, 'wpv-post-field') !== false) {
         		$param1 = 'Field';
@@ -291,7 +307,12 @@ if (!class_exists('Editor_addon')) {
         		$slug = str_replace('wpv-post-taxonomy', 'wpv-taxonomy', $slug); */
         	}
         	
-        	return '<a href="javascript:void(0);" class="item" onclick="on_add_field_wpv(\''. $param1 . '\', \'' . $slug . '\', \'' . $menu_item[0] . '\')">' . $menu_item[0] . "</a>\n";
+            $link_text = $menu_item[0];
+            if ($param1 == 'Child View') {
+                $link_text = str_replace(' - ' . __('Post View'), '', $link_text);
+                $link_text = str_replace(' - ' . __('Taxonomy View'), '', $link_text);
+            }
+        	return '<a href="javascript:void(0);" class="item" onclick="on_add_field_wpv(\''. $param1 . '\', \'' . esc_js($slug) . '\', \'' . base64_encode($menu_item[0]) . '\')">' . $link_text . "</a>\n";
         }
         
         // add parent items for Views and View Templates
@@ -356,54 +377,6 @@ if (!class_exists('Editor_addon')) {
         }
         /*
 
-          Render the javascript code to define the menus
-          The views_editor_plugin.js will use the created javascript
-          variables to create the menu.
-
-         */
-
-        function render_js() {
-            if (sizeof($this->items) > 0) {
-                $name = str_replace('-', '_', $this->name);
-
-                ?>    
-                <script type="text/javascript">
-                    var wp_editor_addon_<?php echo $name; ?> = new Array();
-                    var button_title = '<?php echo $this->button_text; ?>';
-                <?php
-                $index = 0;
-                foreach ($this->items as $item) {
-                    $function_name = $name . base64_encode($item[0]) . '_' . $index;
-                    $function_name = str_replace(array('+', '/', '='), '_',
-                            $function_name);
-                    if ($item[3] != '') {
-                        // we need to create an on-click function that calls the function passed
-                        echo 'wp_editor_addon_' . $name . '[' . $index . '] = new Array("' . $item[0] . '", "' . $function_name . '", "' . $item[2] . '");' . "\n";
-
-                        // create a js function to be called for the on_click
-                        echo 'function ' . $function_name . "() { " . $item[3] . "};\n";
-                    } else {
-                        // we need to create an on-click function that just inserts the shortcode.
-                        echo 'wp_editor_addon_' . $name . '[' . $index . '] = new Array("' . $item[0] . '", "' . $function_name . '", "' . $item[2] . '");' . "\n";
-
-                        // create a js function to be called for the on_click
-                        echo 'function ' . $function_name . "() { tinyMCE.activeEditor.execCommand('mceInsertContent', false, '[" . $item[1] . "]')};\n";
-                    }
-
-                    $index++;
-                }
-
-                ?>
-                </script>
-                <?php
-                add_filter('mce_external_plugins',
-                        array($this, 'wpv_mce_register'));
-                add_filter('mce_buttons', array($this, 'wpv_mce_add_button'), 0);
-            }
-        }
-
-        /*
-
           Add the wpv_views button to the toolbar.
 
          */
@@ -436,58 +409,88 @@ if (!class_exists('Editor_addon')) {
          */
 	    function sort_menus_alphabetically($menus) {
     		// keep main references if set (not set on every screen)
-   			$menu_basic[__('Basic', 'wp-views')] = isset($menus[__('Basic', 'wp-views')]) ? $menus[__('Basic', 'wp-views')] : array();
- 			$menu_taxonomy[__('Taxonomy', 'wp-views')] = isset($menus[__('Taxonomy', 'wp-views')]) ? $menus[__('Taxonomy', 'wp-views')] : array();
- 			$menu_field[__('Other Fields', 'wp-views')] = isset($menus[__('Field', 'wp-views')]) ? $menus[__('Field', 'wp-views')] : array();
-			$menu_vtemplate[__('View templates', 'wp-views')] = isset($menus[__('View templates', 'wp-views')]) ? $menus[__('View templates', 'wp-views')] : array();
+            $menu_temp = array();
+            $menu_names = array(
+                                __('Taxonomy View', 'wpv-views'),
+                                __('Post View', 'wpv-views'),
+                                __('View', 'wpv-views'),
+                                __('View templates', 'wpv-views'),
+                                __('Taxonomy', 'wpv-views'),
+                                __('Basic', 'wpv-views'),
+                                __('Other Fields', 'wpv-views')
+                                );
+            
+            foreach ($menu_names as $name) {
+                $menu_temp[$name] = isset($menus[$name]) ? $menus[$name] : array();
+            }
  			
  			// remove them to preserve correct listing
- 			unset($menus[__('Basic', 'wp-views')]);
- 			unset($menus[__('Taxonomy', 'wp-views')]);
- 			unset($menus[__('Field', 'wp-views')]);
- 			unset($menus[__('View templates', 'wp-views')]);
-
+            foreach ($menu_names as $name) {
+     			unset($menus[$name]);
+            }
+            
  			// sort all elements by key
             ksort($menus);
             
            	// add main elements in the correct order
-            $menus = !empty($menu_taxonomy[__('Taxonomy', 'wp-views')]) ? array_merge($menu_taxonomy, $menus) : $menus;
-            $menus = !empty($menu_vtemplate[__('View templates', 'wp-views')]) ? array_merge($menu_vtemplate, $menus) : $menus;
-            $menus = !empty($menu_basic[__('Basic', 'wp-views')]) ? array_merge($menu_basic, $menus): $menus;
-            $menus = !empty($menu_field[__('Other Fields', 'wp-views')]) ? array_merge($menus, $menu_field) : $menus;
+            foreach ($menu_names as $name) {
+                $menus = !empty($menu_temp[$name]) ? array_merge(array($name => $menu_temp[$name]), $menus) : $menus;
+            }
             
             // sort inner elements in the submenus
-            foreach($menus as $key=>&$menu_group) {
+            foreach($menus as $key=>$menu_group) {
             	if(is_array($menu_group)) {
             		ksort($menu_group);
             	}
             }
+            
+            return $menus;
 	    }
 	    
 	    function get_search_bar() {
 	    	$searchbar = '<div class="searchbar">';
 	    	$searchbar .= '<span>'. __('Search', 'wpv-views') .': </span>';
 	    	$searchbar .= '<input type="text" class="search_field" onkeyup="wpv_on_search_filter(this)" />';
-	    	$searchbar .= '<input type="button" class="search_clear" value="'.__('Clear', 'wp-views'). '" onclick="wpv_search_clear(this)" style="display: none;" />';
+	    	$searchbar .= '<input type="button" class="search_clear" value="'.__('Clear', 'wpv-views'). '" onclick="wpv_search_clear(this)" style="display: none;" />';
 	    	$searchbar .= '</div>';
 	    
 	    	return $searchbar;
 	    }
 	    
-	    function add_view_templates($menus) {
+	    function add_view_type(&$menus, $post_type, $post_name) {
 	    	global $wpdb;
+            $all_post_types = implode(' ', get_post_types(array('public' => true)));
 	    	
-	    	$view_templates_available = $wpdb->get_results("SELECT ID, post_title, post_name FROM {$wpdb->posts} WHERE post_type='view-template' AND post_status in ('publish')");
-	    	$menus[__('View templates', 'wpv-views')] = array();
+	    	$view_templates_available = $wpdb->get_results("SELECT ID, post_title, post_name FROM {$wpdb->posts} WHERE post_type='{$post_type}' AND post_status in ('publish')");
+	    	$menus[$post_name] = array();
+            $menus[$post_name]['css'] = $all_post_types;
 	    	
 	    	$vtemplate_index = 0;
 	    	foreach($view_templates_available as $vtemplate) {
-	    		 $menus[__('View templates', 'wpv-views')][$vtemplate_index] = array();
-				 $menus[__('View templates', 'wpv-views')][$vtemplate_index][] = $vtemplate->post_title;
-				 $menus[__('View templates', 'wpv-views')][$vtemplate_index][] = $vtemplate->post_name;
-				 $menus[__('View templates', 'wpv-views')][$vtemplate_index][] = __('View templates', 'wpv-views');
-				 $menus[__('View templates', 'wpv-views')][$vtemplate_index][] = '';
-				 $vtemplate_index++; 
+                
+                $title = $vtemplate->post_title;
+                
+                if ($post_type == 'view') {
+                    $view_settings = get_post_meta($vtemplate->ID, '_wpv_settings', true);
+                    $title = $vtemplate->post_title . ' - ' . __('Post View', 'wpv-views');
+                    if (isset($view_settings['query_type'][0]) && $view_settings['query_type'][0] == 'taxonomy') {
+                        $title = $vtemplate->post_title . ' - ' . __('Taxonomy View', 'wpv-views');
+                        if ($post_name == __('Post View', 'wpv-views')) {
+                            continue;
+                        }
+                    } else {
+                        if ($post_name == __('Taxonomy View', 'wpv-views')) {
+                            continue;
+                        }
+                    }
+                }
+                
+                $menus[$post_name][$vtemplate_index] = array();
+                $menus[$post_name][$vtemplate_index][] = $title;
+                $menus[$post_name][$vtemplate_index][] = $vtemplate->post_name;
+                $menus[$post_name][$vtemplate_index][] = $post_name;
+                $menus[$post_name][$vtemplate_index][] = '';
+                $vtemplate_index++; 
 	    	}
 	    }
 	    
@@ -520,6 +523,50 @@ if (!class_exists('Editor_addon')) {
     }
     
     
+
+    /**
+     * Renders JS for inserting shortcode from thickbox popup to editor.
+     * 
+     * @param type $shortcode 
+     */
+    function editor_admin_popup_insert_shortcode_js($shortcode) {
+    
+        ?>
+        <script type="text/javascript">
+            //<![CDATA[
+            window.parent.jQuery('#TB_closeWindowButton').trigger('click');
+            
+            if (window.parent.wpcfFieldsEditorCallback_redirect) {
+                eval(window.parent.wpcfFieldsEditorCallback_redirect['function'] + '(\'<?php echo esc_js($shortcode); ?>\', window.parent.wpcfFieldsEditorCallback_redirect[\'params\'])');
+            } else {
+            
+                if (window.parent.wpcfActiveEditor != false) {
+                    if (window.parent.jQuery('textarea#'+window.parent.wpcfActiveEditor+':visible').length) {
+                        // HTML editor
+                        window.parent.jQuery('textarea#'+window.parent.wpcfActiveEditor).insertAtCaret('<?php echo $shortcode; ?>');
+                    } else {
+                        // Visual editor
+                        window.parent.tinyMCE.execCommand('mceFocus', false, window.parent.wpcfActiveEditor);
+                        window.parent.tinyMCE.activeEditor.execCommand('mceInsertContent', false, '<?php echo $shortcode; ?>');
+                    }
+                } else if (window.parent.wpcfInsertMetaHTML == false) {
+                    if (window.parent.jQuery('textarea#content:visible').length) {
+                        // HTML editor
+                        window.parent.jQuery('textarea#content').insertAtCaret('<?php echo $shortcode; ?>');
+                    } else {
+                        // Visual editor
+                        window.parent.tinyMCE.activeEditor.execCommand('mceInsertContent', false, '<?php echo $shortcode; ?>');
+                    }
+                } else {
+                    window.parent.jQuery('#'+window.parent.wpcfInsertMetaHTML).insertAtCaret('<?php echo $shortcode; ?>');
+                    window.parent.wpcfInsertMetaHTML = false;
+                }
+            }
+            
+            //]]>
+        </script>
+        <?php
+    }
 
 }
 

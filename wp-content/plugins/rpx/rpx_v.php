@@ -274,7 +274,8 @@ function rpx_inline_javascript(){
   }
   $rpx_social_option = get_option(RPX_SOCIAL_OPTION);
   $rpx_social_pub = get_option(RPX_SOCIAL_PUB);
-  if ($rpx_social_option == 'true' || !empty($rpx_social_pub) ){
+  $rpx_new_share = get_option(RPX_NEW_SHARE_OPTION); 
+  if (($rpx_social_option == 'true' || !empty($rpx_social_pub)) && $rpx_new_share != 'true'){
 ?>
 <script type="text/javascript">//<!--
 function rpxWPsocial (rpxLabel, rpxSummary, rpxLink, rpxLinkText, rpxComment, rpxImageSrc, rpxPostID, rpxElement){
@@ -367,7 +368,8 @@ function rpxWPsocial (rpxLabel, rpxSummary, rpxLink, rpxLinkText, rpxComment, rp
 }
 //--></script>
 <?php
-    if ( get_option(RPX_SHARE_COUNT_OPTION) == 'hover' ) {
+  }
+  if ( get_option(RPX_SHARE_COUNT_OPTION) == 'hover' ) {
 ?>
 <script type="text/javascript">//<!--
 function rpx_jquery_load() {
@@ -391,7 +393,6 @@ function rpx_jquery_load() {
 rpx_jquery_load();
 //--></script>
 <?php
-    }
   }
   if ( get_option(RPX_NEW_WIDGET_OPTION) == 'true' ) {
     $realm_domain = get_option(RPX_REALM_OPTION);
@@ -426,6 +427,163 @@ rpx_jquery_load();
     s.parentNode.insertBefore(e, s);
 })();
 </script>
+<?php
+  }
+  if (($rpx_social_option == 'true' || !empty($rpx_social_pub)) && $rpx_new_share == 'true'){
+    $realm_domain = get_option(RPX_REALM_OPTION);
+    $realm = str_replace('.rpxnow.com', '', $realm_domain);
+    ?>
+<script type="text/javascript">
+(function() {
+    if (typeof window.janrain !== 'object') window.janrain = {};
+    if (typeof window.janrain.settings !== 'object') window.janrain.settings = {};
+    if (typeof window.janrain.settings.share !== 'object') window.janrain.settings.share = {};
+    if (typeof window.janrain.settings.packages !== 'object') janrain.settings.packages = ['share'];
+    else janrain.settings.packages.push('share');
+
+    janrain.settings.share.message = "";
+    janrain.settings.share.title = "";
+    janrain.settings.share.url = "";
+    janrain.settings.share.description = "";
+
+    function isReady() { janrain.ready = true; };
+    if (document.addEventListener) {
+        document.addEventListener("DOMContentLoaded", isReady, false);
+    } else {
+        window.attachEvent('onload', isReady);
+    }
+
+    var e = document.createElement('script');
+    e.type = 'text/javascript';
+    e.id = 'janrainWidgets';
+
+    if (document.location.protocol === 'https:') {
+      e.src = 'https://rpxnow.com/js/lib/<?php echo $realm; ?>/widget.js';
+    } else {
+      e.src = 'http://widget-cdn.rpxnow.com/js/lib/<?php echo $realm; ?>/widget.js';
+    }
+
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(e, s);
+})();
+</script>
+<script type="text/javascript">
+window.rpxWPsocial = function(){ return false; };
+window.janrainShareOnload = function() {
+  window.rpxWPsocial = function(rpxLabel, rpxSummary, rpxLink, rpxLinkText, rpxComment, rpxImageSrc, rpxPostID, rpxElement){
+    if (typeof console != 'object') {
+      //Dummy console log.
+      var console = new Object();
+      console.data = new Array();
+      console.log = function(err) {
+        this.data.push(err);
+      }
+    }
+<?php
+  $share_auth = get_option(RPX_SHARE_AUTH_OPTION);
+  if ( !is_user_logged_in() && $share_auth == 'true'){?>
+    janrain.events.onModalClose.addHandler(function(response) {
+      if (window.rpxDoRefresh == true){
+        window.location = window.location;
+      }
+    });
+
+    janrain.events.onShareLoginToken.addHandler(function(response) {
+      if (typeof response != null & response != ''){
+        this.connect =  new XMLHttpRequest();
+        this.connect.onreadystatechange=function() {
+          if (this.readyState==4 && this.status==200){
+            window.rpxDoRefresh = true;
+          }
+        }
+        this.connect.open('GET', window.location+'?action=rpx_token&token='+response.token,true);
+        this.connect.send();
+      }
+    });
+<?php
+  }
+  ?>
+    janrain.events.onShareSendComplete.addHandler(function(response) {
+      window.rpxShareResponse = response;
+      var rpxSharePost = new Array();
+      var rpxShareParams = new Array();
+      try {
+        var theData = response;
+        for (i in theData.results){
+          try {
+            if (theData.results[i].success == true && (rpxPostID != '' || rpxPostID != null)) {
+              rpxSharePost[i] = new XMLHttpRequest();
+              rpxSharePost[i].myData = theData;
+              rpxSharePost[i].onreadystatechange=function() {
+                if (this.readyState==4 && this.status==200) {
+                  var rpxShareData = JSON.parse(this.responseText);
+                  if (rpxShareData.stat == 'ok') {
+                    var theDivs = rpxElement.getElementsByTagName('div');
+                    var theTotal = 0;
+                    var totalDiv = null;
+                    for (n in theDivs) {
+                      try {
+                        var theDiv = theDivs[n];
+                        if (typeof theDiv == 'object') {
+                          var classReg = new RegExp('rpx_ct_'+this.myData.provider); 
+                          if (theDiv.getAttribute('class').search(classReg) >= 0) {
+                            var theCount = Number(theDiv.innerHTML);
+                            theCount++;
+                            theTotal++;
+                            theDiv.innerHTML = String(theCount);
+                            try {
+                              rpx_showhide(theDiv);
+                            } catch(err) {
+                              console.log(err);
+                            }
+                          }
+                          classReg = new RegExp('rpx_ct_total'); 
+                          if (theDiv.getAttribute('class').search(classReg) >= 0) {
+                            totalDiv = theDiv;
+                          }
+                        }
+                      } catch(err) {
+                        console.log(err);
+                      }
+                    }
+                    if (totalDiv != null) {
+                      totalDiv.innerHTML = String(Number(totalDiv.innerHTML) + theTotal);
+                      totalDiv = null;
+                    }
+                  }
+                }
+              }
+              if (theData.results[i].shareResultUrl == null){
+                theData.results[i].shareResultUrl = 'http://'+theData.provider+'.com/';
+              }
+              rpxShareParams[i] = '?post_id='+encodeURIComponent(rpxPostID);
+              rpxShareParams[i] += '&provider='+encodeURIComponent(theData.provider);
+              rpxShareParams[i] += '&share_url='+encodeURIComponent(theData.results[i].shareResultUrl);
+              rpxSharePost[i].open('GET','<?php echo RPX_PLUGIN_URL; ?>rpx_sharePost.php'+rpxShareParams[i],true);
+              rpxSharePost[i].send();
+            }
+          } catch(err) {
+            console.log(err);
+          }
+        }
+      } catch(err) {
+        console.log(err);
+      }
+    });
+    janrain.engage.share.reset();
+    janrain.engage.share.setMessage(rpxComment);
+    janrain.engage.share.setTitle(rpxLinkText);
+    janrain.engage.share.setUrl(rpxLink);
+    janrain.engage.share.setDescription(rpxSummary);
+    janrain.engage.share.setImage(rpxImageSrc);
+    if (typeof rpxElement.rpxProvider != null && rpxElement.rpxProvider != '' && rpxElement.rpxProvider != null){
+      janrain.engage.share.showProvider(rpxElement.rpxProvider);
+    }
+    janrain.engage.share.show();
+  }
+}
+</script>
+
 <?php
   }
   $rpx_inline_js_done = true;
@@ -504,14 +662,26 @@ function rpx_admin_menu_view(){
 .rpx_td_left {
   text-align:left;
 }
-.rpx_note {
+.rpx_settings {
+  width:612px;
+}
+.rpx_settings_block {
+  width: 600px;
+  background-color:#F6F6F6;
+  border:0px;
+  border-bottom:2px solid #EAF2FA;
+  border-top:3px solid #EAF2FA;
+  padding-left:6px;
   float:left;
+}
+.rpx_clear {
+  clear:both;
 }
 </style>
 <script type="text/javascript">
 function rpxshowhide(box,val) {
   if(document.getElementById(box).checked==true) {
-    document.getElementById(val).style.visibility="visible";
+    document.getElementById(val).style.visibility="inherit";
   } else {
     document.getElementById(val).style.visibility="hidden";
   }
@@ -521,24 +691,70 @@ function rpxshowhide(box,val) {
 <h2>Janrain Engage Setup</h2>
 <?php rpx_print_messages();  echo $rpx_test['select']; ?>
 <form method="post" action="options.php">
+<div class="rpx_settings">
+  <div class="rpx_settings_block">
   <?php settings_fields( 'rpx_settings_group' ); ?>
-  <table class="form-table">
-    <tr class="rpx_tr_dk">
-      <td class="rpx_td">
       <label for="rpxapikey">Engage API Key: </label>
       <input id="rpxapikey" type="text" name="<?php echo RPX_API_KEY_OPTION; ?>" style="width:40em;" value="<?php echo get_option(RPX_API_KEY_OPTION); ?>" />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr><?php
+  </div>
+  <div class="rpx_settings_block">
+    <?php
   if (strlen(get_option(RPX_API_KEY_OPTION)) == 40){?>
-    <tr class="rpx_tr_lt">
-      <td class="rpx_td">
+    
       <h3>Sign-In Settings</h3>
       Setup Sign-In widget <a target="_blank" href="<?php echo get_option(RPX_ADMIN_URL_OPTION); echo RPX_SIGNIN_SETUP_URL; ?>">here</a>.<br />
       Add your site domain to the list <a target="_blank" href="<?php echo get_option(RPX_ADMIN_URL_OPTION); echo RPX_SETTINGS_SETUP_URL; ?>">here</a>.<br />
-      Click save to update Engage provider icons.<?php echo rpx_small_buttons(); ?>
-      </td>
-      <td class="rpx_td">Expert widget options:
+  <ul>
+  <li>
+      <label for="rpxsignin">Allow sign in via Engage: (This must be enabled for any Engage sign-in to work.)</label>
+      <input id="rpxsignin" type="checkbox" name="<?php echo RPX_SIGNIN_OPTION; ?>" value="true"<?php if (get_option(RPX_SIGNIN_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+  </li><li>
+      <label for="rpxwidget">Enable new Engage widget:</label>
+      <input id="rpxwidget" type="checkbox" name="<?php echo RPX_NEW_WIDGET_OPTION; ?>" value="true"<?php if (get_option(RPX_NEW_WIDGET_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+  </li><li>
+      <label for="rpxvemail">Allow sign in based on verifiedEmail match:</label>
+      <input id="rpxvemail" type="checkbox" name="<?php echo RPX_VEMAIL_OPTION; ?>" value="true"<?php if (get_option(RPX_VEMAIL_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+  </li><li>
+      <label for="rpxcomm">Login link for comments:</label>
+      <select id="rpxcomm" name="<?php echo RPX_COMMENT_OPTION; ?>">
+      <option value="none"<?php if (get_option(RPX_COMMENT_OPTION) == 'none'){ echo ' selected="selected"'; } ?>>None</option><?php
+    foreach($rpx_comment_actions as $key => $val){?>
+      <option value="<?php echo $val; ?>"<?php if (get_option(RPX_COMMENT_OPTION) == $val){ echo ' selected="selected"'; } ?>><?php echo $key; ?></option><?php
+    }?>
+      </select><br>
+      <span>*&nbsp;Wordpress&nbsp;3&nbsp;themes.<br>&sup1;&nbsp;For&nbsp;&quot;registered&nbsp;and&nbsp;logged&nbsp;in&nbsp;to&nbsp;comment&quot;</span>
+  </li>
+  </ul>
+  </div>
+  <div class="rpx_settings_block">
+      <h3>Sign-In Registration</h3>
+      Click <a href="?page=<?php echo RPX_MENU_SLUG; ?>&amp;rpx_cleanup=true">here</a> to remove Engage incomplete (no email) accounts older than <?php echo RPX_CLEANUP_AGE; ?> minutes old.
+      <?php
+    $rpx_reg_mesg = '';
+    if (get_option('users_can_register') != 1){
+      $rpx_reg_mesg = '(You must enable the Wordpress General Setting for Membership "<a href="./options-general.php#users_can_register">Anyone can register</a>".)';
+    }
+?>
+  <ul>
+  <li>
+      <label for="rpxautoreg">Enable automatic user registration <?php echo $rpx_reg_mesg; ?></label>
+      <input id="rpxautoreg" type="checkbox" name="<?php echo RPX_AUTOREG_OPTION; ?>" value="true"<?php if (get_option(RPX_AUTOREG_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+  </li><li>
+      <?php if (get_option(RPX_AUTOREG_OPTION) == 'true'){ ?>
+      <label for="rpxverifyname">Force users to select username:</label>
+      <input id="rpxverifyname" type="checkbox" name="<?php echo RPX_VERIFYNAME_OPTION; ?>" value="true"<?php if (get_option(RPX_VERIFYNAME_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+      <?php } else { ?>
+      &nbsp;
+      <?php } ?>
+  </li><li>
+      <label for="rpxwplogin">Show Engage sign in on wp-login page:</label>
+      <input id="rpxwplogin" type="checkbox" name="<?php echo RPX_WPLOGIN_OPTION; ?>" value="true"<?php if (get_option(RPX_WPLOGIN_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+  </li>
+  </ul>
+  </div><?php
+  $rpx_new_widget_option = get_option(RPX_NEW_WIDGET_OPTION);
+  if ($rpx_new_widget_option == 'false'){?>
+  <div class="rpx_settings_block">Expert legacy widget options:
       <br>
       <label for="rpxparamstxt">Additional iframe URL parameters (use &amp; to separate):</label>
       <input id="rpxparamstxt" name="<?php echo RPX_PARAMS_OPTION; ?>" type="text" size=50 value="<?php
@@ -548,145 +764,74 @@ function rpxshowhide(box,val) {
   }
   echo $rpx_params_txt;
   ?>" />
-      </td>
-    </tr>
-    <tr class="rpx_tr_lt rpx_tr_sub">
-      <td class="rpx_td">
-      <label for="rpxsignin">Allow sign in via Engage: (This must be enabled for any Engage sign-in to work.)</label>
-      <input id="rpxsignin" type="checkbox" name="<?php echo RPX_SIGNIN_OPTION; ?>" value="true"<?php if (get_option(RPX_SIGNIN_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_lt rpx_tr_sub">
-      <td class="rpx_td">
-      <label for="rpxwidget">Enable new Engage widget:</label>
-      <input id="rpxwidget" type="checkbox" name="<?php echo RPX_NEW_WIDGET_OPTION; ?>" value="true"<?php if (get_option(RPX_NEW_WIDGET_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_lt rpx_tr_sub">
-      <td class="rpx_td">
-      <label for="rpxvemail">Allow sign in based on verifiedEmail match:</label>
-      <input id="rpxvemail" type="checkbox" name="<?php echo RPX_VEMAIL_OPTION; ?>" value="true"<?php if (get_option(RPX_VEMAIL_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr id="rpx_comment_option" class="rpx_tr_lt rpx_tr_sub">
-      <td class="rpx_td">
-       <span  class="rpx_note"><label for="rpxcomm">Login link for comments:</label>
-       <select id="rpxcomm" name="<?php echo RPX_COMMENT_OPTION; ?>">
-         <option value="none"<?php if (get_option(RPX_COMMENT_OPTION) == 'none'){ echo ' selected="selected"'; } ?>>None</option><?php
-    foreach($rpx_comment_actions as $key => $val){?>
-         <option value="<?php echo $val; ?>"<?php if (get_option(RPX_COMMENT_OPTION) == $val){ echo ' selected="selected"'; } ?>><?php echo $key; ?></option><?php
-    }?>
-       </select></span>
-       <span>*&nbsp;Wordpress&nbsp;3&nbsp;themes.<br />&sup1;&nbsp;For&nbsp;&quot;registered&nbsp;and&nbsp;logged&nbsp;in&nbsp;to&nbsp;comment&quot;</span>
-      </td>
-      <td class="rpx_td_left">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_dk">
-      <td class="rpx_td">
-      <h3>Sign-In Registration</h3>
-      Click <a href="?page=<?php echo RPX_MENU_SLUG; ?>&amp;rpx_cleanup=true">here</a> to remove Engage incomplete (no email) accounts older than <?php echo RPX_CLEANUP_AGE; ?> minutes old.
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_dk rpx_tr_sub">
-      <td class="rpx_td"><?php
-    $rpx_reg_mesg = '';
-    if (get_option('users_can_register') != 1){
-      $rpx_reg_mesg = '(You must enable the Wordpress General Setting for Membership "<a href="./options-general.php#users_can_register">Anyone can register</a>".)';
-    }
-?>
-      <label for="rpxautoreg">Enable automatic user registration <?php echo $rpx_reg_mesg; ?></label>
-      <input id="rpxautoreg" type="checkbox" name="<?php echo RPX_AUTOREG_OPTION; ?>" value="true"<?php if (get_option(RPX_AUTOREG_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">
-      <?php if (get_option(RPX_AUTOREG_OPTION) == 'true'){ ?>
-      <label for="rpxverifyname">Force users to select username:</label>
-      <input id="rpxverifyname" type="checkbox" name="<?php echo RPX_VERIFYNAME_OPTION; ?>" value="true"<?php if (get_option(RPX_VERIFYNAME_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      <?php } else { ?>
-      &nbsp;
-      <?php } ?>
-      </td>
-    </tr>
-    <tr class="rpx_tr_lt">
-      <td class="rpx_td">
+      </div>
+      <?php
+  }?>
+  <div class="rpx_settings_block">
       <h3>General User Experience</h3>
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_lt rpx_tr_sub">
-      <td class="rpx_td">
-      <label for="rpxwplogin">Show Engage sign in on wp-login page:</label>
-      <input id="rpxwplogin" type="checkbox" name="<?php echo RPX_WPLOGIN_OPTION; ?>" value="true"<?php if (get_option(RPX_WPLOGIN_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_lt rpx_tr_sub">
-      <td class="rpx_td">
+      <ul>
+      <li>
       <label for="rpxavatar">Use social provider avatars on comments:</label>
       <input id="rpxavatar" type="checkbox" name="<?php echo RPX_AVATAR_OPTION; ?>" value="true"<?php if (get_option(RPX_AVATAR_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_lt rpx_tr_sub">
-      <td class="rpx_td">
+      </li><li>
       <label for="rpxremovable">Allow users to remove their Engage provider and data:</label>
       <input id="rpxremovable" type="checkbox" name="<?php echo RPX_REMOVABLE_OPTION; ?>" value="true"<?php if (get_option(RPX_REMOVABLE_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
+      </li>
+      </ul>
+  </div>
     <?php
     $rpx_social_pub = get_option(RPX_SOCIAL_PUB);
     if ( !empty($rpx_social_pub) ){?>
-    <tr class="rpx_tr_dk">
-      <td class="rpx_td">
+    <div class="rpx_settings_block">
       <h3>Social Sharing Settings</h3>
       Setup Social Sharing widget <a target="_blank" href="<?php echo get_option(RPX_ADMIN_URL_OPTION); echo RPX_SOCIAL_SETUP_URL; ?>">here</a>.
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr class="rpx_tr_dk rpx_tr_sub">
-      <td class="rpx_td">
+    <p>
       <label for="rpxsocial">Enable social sharing:</label>
-      <input onclick="rpxshowhide('rpxsocial','rpx_share_option');rpxshowhide('rpxsocial','rpx_share_option2');" id="rpxsocial" type="checkbox" name="<?php echo RPX_SOCIAL_OPTION; ?>" value="true"<?php if (get_option(RPX_SOCIAL_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr id="rpx_share_option" class="rpx_tr_dk rpx_tr_sub">
-      <td class="rpx_td">
+      <input onclick="rpxshowhide('rpxsocial','rpxshareopts');" id="rpxsocial" type="checkbox" name="<?php echo RPX_SOCIAL_OPTION; ?>" value="true"<?php if (get_option(RPX_SOCIAL_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+    </p>
+    <div id="rpxshareopts">
+    <p>
+      <label for="rpxnewshare">Enable new share widget:</label>
+      <input onclick="rpxshowhide('newshare','rpx_share_auth_option');" id="newshare" type="checkbox" name="<?php echo RPX_NEW_SHARE_OPTION; ?>" value="true"<?php if (get_option(RPX_NEW_SHARE_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+    </p>
+    <div id="rpx_share_auth_option">
+    <p>
+      <label for="rpxsocialauth">Sign in on share:</label>
+      <input onclick="rpxshowhide('rpxsocialauth','rpx_share_reg');" id="rpxsocialauth" type="checkbox" name="<?php echo RPX_SHARE_AUTH_OPTION; ?>" value="true"<?php if (get_option(RPX_SHARE_AUTH_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+    </p>
+    <p id="rpx_share_reg">
+      <label for="rpxsocialreg">Register on share: (Disables forced email collection.)</label>
+      <input id="rpxsocialreg" type="checkbox" name="<?php echo RPX_SHARE_REG_OPTION; ?>" value="true"<?php if (get_option(RPX_SHARE_REG_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
+    </p>
+    </div>
+    </td>
+    <p>
        <label for="rpxsloc">Share link on articles:</label>
        <select id="rpxsloc" name="<?php echo RPX_S_LOC_OPTION; ?>">
          <option value="none"<?php if (get_option(RPX_S_LOC_OPTION) == 'none'){ echo ' selected="selected"'; } ?>>None</option>
          <option value="top"<?php if (get_option(RPX_S_LOC_OPTION) == 'top'){ echo ' selected="selected"'; } ?>>at opening of article</option>
          <option value="bottom"<?php if (get_option(RPX_S_LOC_OPTION) == 'bottom'){ echo ' selected="selected"'; } ?>>at closing of article</option>
        </select>
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr>
-    <tr id="rpx_share_option2" class="rpx_tr_dk rpx_tr_sub">
-      <td class="rpx_td">
+    </p>
+    <p>
       <label for="rpxsoccom">Share link on comments:</label>
       <input id="rpxsoccom" type="checkbox" name="<?php echo RPX_SOCIAL_COMMENT_OPTION; ?>" value="true"<?php if (get_option(RPX_SOCIAL_COMMENT_OPTION) == 'true'){ echo ' checked="checked"'; } ?> />
-      </td>
-      <td class="rpx_td">
+      </p>
+      <p>
        <label for="rpxshct">Show count bubbles:</label>
        <select id="rpxshct" name="<?php echo RPX_SHARE_COUNT_OPTION; ?>">
          <option value="false"<?php if (get_option(RPX_SHARE_COUNT_OPTION) == 'false'){ echo ' selected="selected"'; } ?>>none</option>
          <option value="hover"<?php if (get_option(RPX_SHARE_COUNT_OPTION) == 'hover'){ echo ' selected="selected"'; } ?>>on mouse hover</option>
          <option value="always"<?php if (get_option(RPX_SHARE_COUNT_OPTION) == 'always'){ echo ' selected="selected"'; } ?>>always on</option>
        </select>
-    </tr>
-    <tr id="rpx_share_option3" class="rpx_tr_dk rpx_tr_sub">
-      <td class="rpx_td">
+    </p>
+    <p>
        <label for="rpxsloc">Share link style:</label>
        <select id="rpxsloc" name="<?php echo RPX_S_STYLE_OPTION; ?>">
          <option value="icon"<?php if (get_option(RPX_S_STYLE_OPTION) == 'icon'){ echo ' selected="selected"'; } ?>>Icons</option>
          <option value="label"<?php if (get_option(RPX_S_STYLE_OPTION) == 'label'){ echo ' selected="selected"'; } ?>>Text</option>
        </select>
-      </td>
-      <td class="rpx_td">
+       <br>
         <label for="rpxsharetxt">Share label/button text (use &amp;nbsp; for none):</label>
         <input id="rpxsharetxt" name="<?php echo RPX_S_TXT_OPTION; ?>" type="text" size=30 value="<?php
   $rpx_s_txt = get_option(RPX_S_TXT_OPTION);
@@ -695,23 +840,34 @@ function rpxshowhide(box,val) {
   }
   echo $rpx_s_txt;
   ?>" />
-      </td>
-    </tr>
-    <script type="text/javascript">rpxshowhide('rpxsocial','rpx_share_option');rpxshowhide('rpxsocial','rpx_share_option2');rpxshowhide('rpxsocial','rpx_share_option3');</script><?php
+    </p>
+    </div>
+    </div>
+    <div class="rpx_settings_block">
+    Current provider icons:<br>
+    <?php echo rpx_small_buttons(); ?><br>
+    If these do not match your selection on the Engage dashboard click save below to refresh.
+    </div>
+    </div>
+    <script type="text/javascript">
+    rpxshowhide('rpxsocial','rpxshareopts');
+    rpxshowhide('newshare','rpx_share_auth_option');
+    rpxshowhide('rpxsocialauth','rpx_share_reg');
+    </script><?php
     }else{?>
-    <tr class="rpx_tr_dk rpx_tr_sub">
-      <td class="rpx_td">
+    <div class="rpx_settings_block">
       Visit your <a href="<?php echo get_option(RPX_ADMIN_URL_OPTION); echo RPX_SOCIAL_SETUP_URL; ?>" target="_blank">Social Widget Setup</a> if you would like to enable social sharing.<br />
       To update the plugin you must click Save after you are done.
-      </td>
-      <td class="rpx_td">&nbsp;</td>
-    </tr><?php
+    </div>
+    <?php
     }
   }?>
-  </table>
+  <div class="rpx_clear">&nbsp;</div>
+  <div class="rpx_settings_block">
   <p class="submit">
     <input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
   </p>
+  </div>
 </form>
 </div><?php
 }
@@ -1309,11 +1465,11 @@ function rpx_message_box($message='') {
 <div id="rpxmsgbox" class="rpxbox rpxmsgbox">
 <div id="rpxmsgw1" class="rpxhoriz"></div>
 <table id="rpxmsgw2" class="rpxvert"><tr id="rpxvrow" class="rpxvrow"><td id="rpxvcol" class="rpxvcol">
-<span id="rpxmsgborder" class="rpxborder">
+<div id="rpxmsgborder" class="rpxborder">
 <span id="rpxmsgclose" class="rpxclose" onclick="hideRPX('rpxmsgbox')"><img src="<?php echo RPX_IMAGE_URL; ?>close.png" alt="close" /></span>
 <div id="rpxmsg" class="rpxmsg">
 <div id="rpxmessage" class="rpxmessage"><?php echo $message; ?></div>
-</div></span></td></tr></table></div>
+</div></div></td></tr></table></div>
 <script type="text/javascript">
   showRPX('rpxmsgbox');
 </script>
@@ -1329,7 +1485,7 @@ function rpx_register_form($collect='email') {
 <div id="rpxregbox" class="rpxbox rpxregbox" onload="showRPX('rpxregbox');">
 <div id="rpxregw1" class="rpxhoriz"></div>
 <table id="rpxregw2" class="rpxvert"><tr id="rpxvrow" class="rpxvrow"><td id="rpxvcol" class="rpxvcol">
-<span id="rpxregborder" class="rpxborder">
+<div id="rpxregborder" class="rpxborder">
 <span id="rpxregclose" class="rpxclose" onclick="hideRPX('rpxregbox');"><img src="<?php echo RPX_IMAGE_URL; ?>close.png" alt="close" /></span>
 <div id="rpxregister" class="rpxregister">
 <?php rpx_print_messages(); ?>
@@ -1357,7 +1513,7 @@ function rpx_register_form($collect='email') {
 ?>
 <input id="rpxsubmit" class="rpxsubmit" type="submit" value="Submit" />
 </form>
-</div></span></td></tr></table></div>
+</div></div></td></tr></table></div>
 <script type="text/javascript">
   showRPX('rpxregbox');
 </script>
@@ -1396,7 +1552,7 @@ function rpx_wp_footer(){
 <div id="rpxlogin" class="rpxbox" style="display:none">
 <div id="fiftyfifty" class="rpxhoriz"></div>
 <table id="rpxvertical" class="rpxvert"><tr id="rpxvrow" class="rpxvrow"><td id="rpxvcol" class="rpxvcol">
-<span id="rpx_border" class="rpxborder">
+<div id="rpx_border" class="rpxborder">
 <span id="rpx_close" class="rpxclose" onclick="hideRPX('rpxlogin')"><img src="<?php echo RPX_IMAGE_URL; ?>close.png" alt="close" /></span>
 <?php
   if (get_option(RPX_NEW_WIDGET_OPTION) == 'true'){
@@ -1404,7 +1560,7 @@ function rpx_wp_footer(){
   }else{
     echo rpx_iframe_widget();
   }?>
-</span></td></tr></table></div>
+</div></td></tr></table></div>
 <?php
   $rpx_footer_done = true;
 }
@@ -1444,7 +1600,11 @@ function rpx_get_token_url($redirect_url=NULL, $action=RPX_TOKEN_ACTION){
     $redirect_url = $rpx_http_vars['redirect_to'];
   }
   if (empty($redirect_url) && is_login_page()) {
-    $redirect_url = get_bloginfo('siteurl');
+    if (function_exists('home_url')) {
+      $redirect_url = home_url();
+    }else{
+      $redirect_url = get_bloginfo('url');
+    }
   }
   /**** This is likely to not be needed.
   if ( empty($redirect_url) && !empty($permalink) && !is_front_page() ) {
@@ -1946,7 +2106,7 @@ function rpx_social_icons($label, $share_counts){
       }
       $share_count = '<div class="rpx_counter rpx_ct_'.$val.'"'.$hide.'>'.$count.'</div>';
     }
-    $rpx_social_icons .= '<div class="rpx_icon '.RPX_SHARE_ICON_CLASS.' rpx_'.$val.'" title="'.htmlentities(array_search($val,$rpx_providers)).'">'.$share_count.'</div>';
+    $rpx_social_icons .= '<div class="rpx_icon '.RPX_SHARE_ICON_CLASS.' rpx_'.$val.'" title="'.htmlentities(array_search($val,$rpx_providers)).'" onclick="this.parentNode.parentNode.rpxProvider=\''.$val.'\'">'.$share_count.'</div>';
   }
   $total_count = '';
   if ( $do_count === true ) {

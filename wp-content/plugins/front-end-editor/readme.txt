@@ -3,8 +3,10 @@ Contributors: scribu, Jotschi
 Tags: inline, editor, edit-in-place, visual, wysiwyg
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=WB35NBVGWMS3E&item_name=Front-end%20Editor
 Requires at least: 3.2
-Tested up to: 3.3
-Stable tag: 2.2.1
+Tested up to: 3.4
+Stable tag: 2.3
+License: GPLv3 or later
+License URI: http://www.gnu.org/licenses/gpl.html
 
 Edit content inline, without going to the admin area.
 
@@ -23,7 +25,6 @@ You can edit posts, pages, custom post types, comments, widgets and many [more e
 Credits:
 
 * [Aloha Editor](http://aloha-editor.org) for the fantastic WYSIWYG editing component
-* [Yusuke Kamiyamane](http://p.yusukekamiyamane.com/) for additional icons
 
 Links: [**Documentation**](http://github.com/scribu/wp-front-end-editor/wiki) | [Plugin News](http://scribu.net/wordpress/front-end-editor) | [Author's Site](http://scribu.net)
 
@@ -59,12 +60,20 @@ To avoid problems with WP Super Cache or W3 Total Cache, I recommend disabling c
 == Screenshots ==
 
 1. The tooltip
-2. Editing the post content
-3. Editing the post title
+2. Editing the post title and content
+3. Editing the categories widget
 4. Changing a theme image
 5. The settings page
 
 == Changelog ==
+
+= 2.3 =
+* make Save/Cancel buttons hover in place of the Edit button
+* allow editing multiple elements simultaneously again
+* enhanced JavaScript API
+* switch from Coco to CoffeeScript
+* fix security exploit caused by Aloha demo file and update to Aloha 0.20.16
+* [more info](http://scribu.net/wordpress/front-end-editor/fee-2-3.html)
 
 = 2.2.1 =
 * update to Aloha 0.20.6

@@ -2,6 +2,9 @@
 
 /** @internal */
 function _p2p_expand_direction( $direction ) {
+	if ( !$direction )
+		return array();
+
 	if ( 'any' == $direction )
 		return array( 'from', 'to' );
 	else
@@ -9,14 +12,61 @@ function _p2p_expand_direction( $direction ) {
 }
 
 /** @internal */
+function _p2p_compress_direction( $directions ) {
+	if ( empty( $directions ) )
+		return false;
+
+	if ( count( $directions ) > 1 )
+		return 'any';
+
+	return reset( $directions );
+}
+
+/** @internal */
+function _p2p_flip_direction( $direction ) {
+	$map = array(
+		'from' => 'to',
+		'to' => 'from',
+		'any' => 'any',
+	);
+
+	return $map[ $direction ];
+}
+
+/** @internal */
 function _p2p_normalize( $items ) {
 	if ( !is_array( $items ) )
 		$items = array( $items );
 
-	if ( is_object( reset( $items ) ) )
-		$items = wp_list_pluck( $items, 'ID' );
+	foreach ( $items as &$item ) {
+		if ( is_a( $item, 'P2P_Item' ) )
+			$item = $item->get_id();
+		elseif ( is_object( $item ) )
+			$item = $item->ID;
+	}
 
 	return $items;
+}
+
+/** @internal */
+function _p2p_wrap( $items, $class ) {
+	foreach ( $items as &$item ) {
+		$item = new $class( $item );
+	}
+
+	return $items;
+}
+
+/** @internal */
+function _p2p_extract_post_types( $sides ) {
+	$ptypes = array();
+
+	foreach ( $sides as $side ) {
+		if ( 'post' == $side->get_object_type() )
+			_p2p_append( $ptypes, $side->query_vars['post_type'] );
+	}
+
+	return array_unique( $ptypes );
 }
 
 /** @internal */

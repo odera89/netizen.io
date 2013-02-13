@@ -1,71 +1,100 @@
-=== Janrain Engage ===
+=== Social Login & Social Sharing by Janrain ===
 Contributors: forestb
 Donate link: http://www.janrain.com/products/engage/
 Tags: rpx, janrain, engage, janrain engage, authentication, facebook, facebook connect, facebookconnect, openid, twitter, google, yahoo, api, oauth, myspace, linkedin, windows live, login, registration, register, social api, social apis, widget, community, sharing, share, publish, publishing, share button, share widget, social widget, tweet, status update, news feed, newsfeed, social login, social sharing, social sign-on, social sign-in
 Requires at least: 3.2.1
-Tested up to: 3.3.0
-Stable tag: 1.0.9
+Tested up to: 3.4.0
+Stable tag: 1.1.0
+License: GPLv2
 
-Janrain Engage - Social Login and Social Sharing with multiple providers including Facebook, Twitter, Google, Yahoo! and OpenID
+Social Login & Social Sharing by Janrain
 
 == Description ==
-[Janrain Engage](http://www.janrain.com/products/engage/ "Janrain Engage") increases site 
-registrations and generates referral traffic to your site by allowing users to easily 
-register and login via an existing account with Facebook, Google, Twitter, Yahoo!, 
-LinkedIn and other social platforms. Users also can publish their comments or activities 
-from your site to multiple social networks simultaneously.
+[Janrain social
+login](http://janrain.com/products/engage/social-login/) increases site
+registrations and generates referral traffic to your site by allowing
+users to easily register and login via an existing social network or
+email ID. [Janrain social
+sharing](http://janrain.com/products/engage/social-sharing/) allows
+users to publish their comments or activities from your site to multiple
+social networks simultaneously.
 
-= Registration & Login via Preferred Social Network/Email Provider: =
- Give your visitors the option to sign-in to your site with their existing social 
-network such as Facebook, Google, Twitter, Yahoo!, LinkedIn, Windows Live, MySpace, 
-AOL and others (20 Supported Networks).
+#### Social Login:
 
-= Optional Displays: =
-*  Login buttons displayed on standard WordPress registration and login screen
-*  Login buttons displayed next to login prompt for comments
-*  Login buttons displayed anywhere within your specified widget area
-*  Share button at beginning or end of posts
-*  Share button on each comment
-*  Share button customization
-*  Show social provider photo as avatar
-*  Shortcodes for customized integrations.
-*  Provider selection viewable by admin in user list.
+Give your visitors the option to sign-in to your site with their
+existing social network such as Facebook, Google, Twitter, Yahoo!,
+LinkedIn, Windows Live, MySpace, AOL and others ([20+ Supported
+Networks](https://rpxnow.com/docs/providers)).
 
-= Collects Email Address: =
-Prompts users to enter an email address if the provider used for login does not pass a 
-verified email address (WordPress Requirement). 
+#### Social Login Display Options:
 
-= Legacy Account Mapping: = 
-If your user has an existing account with your site, Janrain Engage will map profile data 
-received at login with the existing account (via verfiedEmail only).
+1.  Social login buttons for standard WordPress registration screen
+2.  Social login buttons for comments
+3.  Social login buttons within Widgets
+4.  Show social provider photo as avatar
+5.  Shortcodes for customized integrations.
+6.  Provider selection viewable by admin in user list.
 
-= Social Sharing: =
-A customizable widget for your users to share your articles to multiple social networks 
-simultaneously. Users can select up to four social communities such as Facebook, Twitter, 
-LinkedIn and Yahoo for sharing. On average this will generate nine referral clicks back 
-to your site for each article that is shared.
+#### Collects Email Address:
 
-= Social Provider Comment Icons: =
-Each comment from a user signed in through a social provider gets an icon to the provider 
-that links to their profile page for that provider.
+Prompts users to enter an email address if the provider used for login
+does not pass a verified email address (WordPress Requirement). Expert
+option to collect placeholder emails to bypass this.
 
-= Connect a provider to an existing account: =
-Users can connect a provider to their account through the profile page or the widget.
-They can also change the provider in the profile page.
+#### Legacy Account Mapping:
 
-= Automatic user registration: =
-Register new users automatically from a simple provider sign in.
-This optional feature lowers the barrier for new user registration.
+If your user has an existing account with your site, Janrain Engage will
+map profile data received at login with the existing account (via
+verfiedEmail only).
 
-= More Information: =
-*  [Janrain Engage Plugin - Demo Site](http://plugins.janrain.com/wordpress/ "Demo Site")
-*  [Janrain Engage Plugin - Basic Setup Video](http://www.youtube.com/watch?v=Qz79cZyBhIE "Basic Setup Video")
-*  [Janrain Engage Plugin - Support](https://support.janrain.com/ "Support")(Login Required)
-*  [Get a Janrain Engage Account](http://www.janrain.com/products/engage/get-janrain-engage "Get a Janrain Engage Account")
-*  [Learn More About Janrain Engage - Video Demo](http://www.janrain.com/products/engage/video "Video Demo")
-*  [Janrain Website](http://www.janrain.com/ "Janrain Website")
+#### Social Sharing:
 
-Follow us on [Twitter](http://twitter.com/janrain "Twitter") and on [Facebook](http://janrain.com/facebook "Facebook") to keep up with the latest updates.
+A customizable widget for your users to share your articles to multiple
+social networks simultaneously. Users can select up to four social
+communities such as Facebook, Twitter, LinkedIn and Yahoo for sharing.
+On average this will generate 13 referral clicks back to your site for
+each article that is shared.
+
+#### Social Sharing Display Options
+
+7.  Social share buttons at beginning or end of posts
+8.  Social share buttons on each comment
+9.  Share button customization
+
+#### Social Provider Comment Icons:
+
+Each comment from a user signed in through a social provider gets an
+icon to the provider that links to their profile page for that provider.
+
+#### Connect a provider to an existing account:
+
+Users can connect a provider to their account through the profile page
+or the widget. They can also change the provider in the profile page.
+
+#### Automatic user registration:
+
+Register new users automatically when they want to share something from
+your site. This optional feature lowers the barrier for new user
+registration.
+
+#### More Information:
+
+1.  [Social Login & Social Sharing Plugin - Demo
+    Site](http://www.google.com/url?q=http%3A%2F%2Fplugins.janrain.com%2Fwordpress%2F&sa=D&sntz=1&usg=AFQjCNGFBiEkDUTPQV-WHY3Y2Y0kBvhy0Q)
+2.  [Social Login & Social Sharing Plugin - Basic Setup
+    Video](http://www.youtube.com/watch?v=Qz79cZyBhIE)
+3.  [Social Login & Social Sharing Plugin -
+    Support](http://www.google.com/url?q=https%3A%2F%2Fsupport.janrain.com%2F&sa=D&sntz=1&usg=AFQjCNFn5cOd7i2v7f9isqKk4SwzFL-QpQ) (Login
+    Required)
+4.  [Get a Janrain
+    Account](http://www.janrain.com/products/engage/get-janrain-engage)
+5.  [Learn More About Janrain - Video
+    Demo](http://www.janrain.com/products/engage/video)
+6.  [Janrain Website](http://www.janrain.com/)
+
+Follow us on [Twitter](http://twitter.com/janrain) and on
+[Facebook](http://janrain.com/facebook) to keep up with the latest
+updates.
 
 == Installation ==
 
@@ -117,7 +146,7 @@ specific discussion at [Janrain Engage Plugin - Support](https://support.janrain
 
 == Changelog ==
 
-v1.0.9 p2
+v1.1.0 p1
 
 = Version 1.0 =
 *  This is an all new plugin that replaces all previous versions for users of Wordpress 3.
@@ -205,9 +234,16 @@ v1.0.9 p2
 * Updated to current widget.
 * Tested for 3.3.0
 
+= Version 1.1.0 =
+* New share widget.
+* Register via share.
+* Login via share.
+* Register without collecting email.
+* Cleaned up admin settings page style.
+
 == Upgrade Notice ==
 
-Version 1.0.9 adds new shortcodes and provider view in user list.
+Version 1.1.0 adds our new share widget.
 
 == Screenshots ==
 
@@ -220,3 +256,5 @@ Version 1.0.9 adds new shortcodes and provider view in user list.
 7. The social share link for articles.
 8. The social share link on comments, and provider icons for commenters. 
 9. The social sharing widget.
+10. Targeted sharing.
+

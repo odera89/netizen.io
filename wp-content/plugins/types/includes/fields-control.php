@@ -83,7 +83,6 @@ class WPCF_Custom_Fields_Control_Table extends WP_List_Table
                     );
                 }
             } else {
-                // @todo not working
                 if (wpcf_types_cf_under_control('check_exists',
                                 $type_data->meta_key)) {
                     unset($cf_other[$type_id]);
@@ -207,7 +206,7 @@ class WPCF_Custom_Fields_Control_Table extends WP_List_Table
     }
 
     function column_cf_name($item) {
-        return $item['name'];
+        return stripcslashes($item['name']);
     }
 
     function column_group($item) {
@@ -252,7 +251,7 @@ class WPCF_Custom_Fields_Control_Table extends WP_List_Table
         return $actions;
     }
 
-    function view_switcher() {
+    function view_switcher($current_mode = '') {
         echo '<div style="clear:both; margin: 20px 0 10px 0; float: right;"><a class="button button-secondary" href="';
         if (empty($_GET['display_all'])) {
             echo esc_url($_SERVER['REQUEST_URI']) . '&amp;display_all=1">' . __('Display all items',
@@ -378,7 +377,7 @@ function wpcf_admin_custom_fields_control_bulk_ajax() {
     }
     if (!empty($_POST)) {
         if (!empty($_POST['groups']) && !empty($_POST['fields'])) {
-            $action = isset($_POST['action']) ? $_POST['action'] : 'wpcf-add-to-group-bulk';
+            $action = isset($_POST['wpcf_action_control']) ? $_POST['wpcf_action_control'] : 'wpcf-add-to-group-bulk';
             foreach ($_POST['groups'] as $group_id) {
                 switch ($action) {
                     case 'wpcf-add-to-group-bulk':
@@ -440,7 +439,9 @@ function wpcf_admin_custom_fields_control_bulk_ajax() {
     echo '<form method="post" action="">';
     echo wpcf_form_simple($output);
     wp_nonce_field('custom_fields_control_bulk');
-    echo '<input type="hidden" name="action" value="' . esc_attr($_GET['wpcf_bulk_action']) . '" />';
+    echo '<input type="hidden" name="action" value="wpcf_ajax" />';
+    echo '<input type="hidden" name="wpcf_action" value="custom_fields_control_bulk" />';
+    echo '<input type="hidden" name="wpcf_action_control" value="' . esc_attr($_GET['wpcf_bulk_action']) . '" />';
     echo '</form>';
 }
 

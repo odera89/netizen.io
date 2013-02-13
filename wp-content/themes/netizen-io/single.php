@@ -45,6 +45,33 @@
 					</article> <!-- end article -->
 					
 					<hr />
+					
+				<?php
+				// Find connected pages
+				$connected = new WP_Query( array(
+				  'connected_type' => 'post_to_threat',
+				  'connected_items' => get_queried_object(),
+				  'nopaging' => true,
+				) );
+				
+				// Display connected pages
+				if ( $connected->have_posts() ) :
+				?>
+				<h3>Articles:</h3>
+				<ul>
+				<?php while ( $connected->have_posts() ) : $connected->the_post(); ?>
+					<li><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a> (submitted by <?php the_author(); ?>)</li>
+				<?php endwhile; ?>
+				</ul>
+				
+				<?php 
+				// Prevent weirdness
+				wp_reset_postdata();
+				
+				endif;
+				?>
+				
+				<hr />
 				  
 
 				  <div class="row-fluid">

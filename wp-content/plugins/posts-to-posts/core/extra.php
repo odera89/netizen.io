@@ -25,9 +25,6 @@ class P2P_Widget extends scbWidget {
 		$ctypes = array();
 
 		foreach ( P2P_Connection_Type_Factory::get_all_instances() as $p2p_type => $ctype ) {
-			if ( ! $ctype instanceof P2P_Connection_Type )
-				continue;
-
 			$ctypes[ $p2p_type ] = $ctype->get_desc();
 		}
 
@@ -41,7 +38,8 @@ class P2P_Widget extends scbWidget {
 			'type' => 'select',
 			'name' => 'ctype',
 			'values' => $ctypes,
-			'desc' => __( 'Connection type:', P2P_TEXTDOMAIN )
+			'desc' => __( 'Connection type:', P2P_TEXTDOMAIN ),
+			'extra' => "style='width: 100%'"
 		), $instance ) );
 
 		echo html( 'p',
@@ -143,17 +141,30 @@ function _p2p_get_list( $args ) {
 
 	$connected = $directed->$method( $item, $extra_qv, 'abstract' );
 
-	$args = array(
-		'before_list' => '<ul id="' . $ctype->name . '_list">',
-		'echo' => false
-	);
+	switch ( $mode ) {
+	case 'inline':
+		$args = array(
+			'separator' => ', '
+		);
+		break;
 
-	if ( 'ol' == $mode ) {
-		_p2p_append( $args, array(
+	case 'ol':
+		$args = array(
 			'before_list' => '<ol id="' . $ctype->name . '_list">',
 			'after_list' => '</ol>',
-		) );
+		);
+		break;
+
+	case 'ul':
+	default:
+		$args = array(
+			'before_list' => '<ul id="' . $ctype->name . '_list">',
+			'after_list' => '</ul>',
+		);
+		break;
 	}
+
+	$args['echo'] = false;
 
 	return apply_filters( "p2p_{$context}_html", $connected->render( $args ), $connected, $directed, $mode );
 }

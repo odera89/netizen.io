@@ -42,7 +42,8 @@ function wpcf_fields_radio_meta_box_form($field) {
         }
     }
     
-    if (!empty($field['value'])) {
+    if (!empty($field['value'])
+            || ($field['value'] === 0 || $field['value'] === '0')) {
         $default_value = $field['value'];
     }
 
@@ -144,7 +145,7 @@ function wpcf_fields_radio_editor_submit() {
         } else {
             $shortcode = wpcf_fields_get_shortcode($field, $add);
         }
-        echo wpcf_admin_fields_popup_insert_shortcode_js($shortcode);
+        echo editor_admin_popup_insert_shortcode_js($shortcode);
         die();
     }
 }
@@ -155,7 +156,7 @@ function wpcf_fields_radio_editor_submit() {
  * @param type $params 
  */
 function wpcf_fields_radio_view($params) {
-    if ($params['style'] == 'raw') {
+    if (isset($params['style']) && $params['style'] == 'raw') {
         return '';
     }
     $field = wpcf_fields_get_field_by_slug($params['field']['slug']);
@@ -170,7 +171,8 @@ function wpcf_fields_radio_view($params) {
                 return htmlspecialchars_decode($params['#content']);
             }
         }
-        return ' ';
+//        return ' ';
+        return '__wpcf_skip_empty';
     }
 
     if (!empty($field['data']['options'])) {
